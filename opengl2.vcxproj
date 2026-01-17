@@ -130,17 +130,24 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\..\Users\HP\Downloads\glad\src\glad.c" />
+    <ClCompile Include="glass.cpp" />
     <ClCompile Include="lighting.cpp" />
+    <ClCompile Include="light_source.cpp" />
     <ClCompile Include="opengl2.cpp" />
     <ClCompile Include="room.cpp" />
     <ClCompile Include="shader.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="glass.h" />
     <ClInclude Include="lighting.h" />
+    <ClInclude Include="light_source.h" />
     <ClInclude Include="room.h" />
     <ClInclude Include="shader.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="glass.frag" />
+    <None Include="glass.vert" />
+    <None Include="glass_simple.frag" />
     <None Include="shader.frag" />
     <None Include="shader.vert" />
   </ItemGroup>

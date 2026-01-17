@@ -1,7 +1,7 @@
 #include "room.h"
 #include <iostream>
 
-// Constructor definition
+// Constructor
 Room::Room(float width, float height, float depth)
     : roomWidth(width), roomHeight(height), roomDepth(depth),
     needsUpdate(true) {
@@ -17,15 +17,23 @@ Room::Room(float width, float height, float depth)
     VAO = VBO = EBO = 0;
 }
 
-// Color setter implementations
-void Room::setFloorColor(const glm::vec3& color) {
-    floorColor = color;
+// Add interior wall with window
+void Room::addInteriorWallWithWindow(const glm::vec3& position, const glm::vec3& size,
+    const glm::vec3& windowRelativePos, const glm::vec3& windowSize) {
+    hasInteriorWall = true;
+    interiorWallPos = position;
+    interiorWallSize = size;
+    windowPosRelative = windowRelativePos;
+    interiorWindowSize = windowSize;
+    interiorWallColor = glm::vec3(0.6f, 0.6f, 0.6f); // Gray interior wall
+    interiorWallNormal = glm::vec3(0.0f, 0.0f, 1.0f); // Facing forward
+
     needsUpdate = true;
 }
 
-void Room::setCeilingColor(const glm::vec3& color) {
-    ceilingColor = color;
-    needsUpdate = true;
+// Get window position (absolute)
+glm::vec3 Room::getWindowPosition() const {
+    return interiorWallPos + windowPosRelative;
 }
 
 void Room::setWallColor(int wallIndex, const glm::vec3& color) {
@@ -35,47 +43,95 @@ void Room::setWallColor(int wallIndex, const glm::vec3& color) {
     }
 }
 
+// Helper function to add a quad
+void Room::addQuad(const glm::vec3& p1, const glm::vec3& p2,
+    const glm::vec3& p3, const glm::vec3& p4,
+    const glm::vec3& color, const glm::vec3& normal) {
+    int baseIndex = vertices.size() / 9;
+
+    // Vertex 1
+    vertices.push_back(p1.x); vertices.push_back(p1.y); vertices.push_back(p1.z);
+    vertices.push_back(color.r); vertices.push_back(color.g); vertices.push_back(color.b);
+    vertices.push_back(normal.x); vertices.push_back(normal.y); vertices.push_back(normal.z);
+
+    // Vertex 2
+    vertices.push_back(p2.x); vertices.push_back(p2.y); vertices.push_back(p2.z);
+    vertices.push_back(color.r); vertices.push_back(color.g); vertices.push_back(color.b);
+    vertices.push_back(normal.x); vertices.push_back(normal.y); vertices.push_back(normal.z);
+
+    // Vertex 3
+    vertices.push_back(p3.x); vertices.push_back(p3.y); vertices.push_back(p3.z);
+    vertices.push_back(color.r); vertices.push_back(color.g); vertices.push_back(color.b);
+    vertices.push_back(normal.x); vertices.push_back(normal.y); vertices.push_back(normal.z);
+
+    // Vertex 4
+    vertices.push_back(p4.x); vertices.push_back(p4.y); vertices.push_back(p4.z);
+    vertices.push_back(color.r); vertices.push_back(color.g); vertices.push_back(color.b);
+    vertices.push_back(normal.x); vertices.push_back(normal.y); vertices.push_back(normal.z);
+
+    // Add indices for two triangles
+    indices.push_back(baseIndex);
+    indices.push_back(baseIndex + 1);
+    indices.push_back(baseIndex + 2);
+    indices.push_back(baseIndex);
+    indices.push_back(baseIndex + 2);
+    indices.push_back(baseIndex + 3);
+}
+
+// Create wall with window hole
+void Room::createWallWithWindow(const glm::vec3& position, const glm::vec3& size,
+    const glm::vec3& windowPos, const glm::vec3& windowSize,
+    const glm::vec3& color, const glm::vec3& normal) {
+    float halfWidth = size.x / 2.0f;
+    float halfHeight = size.y / 2.0f;
+    float windowHalfWidth = windowSize.x / 2.0f;
+    float windowHalfHeight = windowSize.y / 2.0f;
+
+    glm::vec3 wallCenter = position;
+
+    // 1. Top rectangle (above window)
+    addQuad(
+        glm::vec3(wallCenter.x - halfWidth, wallCenter.y + halfHeight, wallCenter.z),
+        glm::vec3(wallCenter.x + halfWidth, wallCenter.y + halfHeight, wallCenter.z),
+        glm::vec3(wallCenter.x + halfWidth, wallCenter.y + windowHalfHeight + windowPos.y, wallCenter.z),
+        glm::vec3(wallCenter.x - halfWidth, wallCenter.y + windowHalfHeight + windowPos.y, wallCenter.z),
+        color, normal
+    );
+
+    // 2. Bottom rectangle (below window)
+    addQuad(
+        glm::vec3(wallCenter.x - halfWidth, wallCenter.y - windowHalfHeight + windowPos.y, wallCenter.z),
+        glm::vec3(wallCenter.x + halfWidth, wallCenter.y - windowHalfHeight + windowPos.y, wallCenter.z),
+        glm::vec3(wallCenter.x + halfWidth, wallCenter.y - halfHeight, wallCenter.z),
+        glm::vec3(wallCenter.x - halfWidth, wallCenter.y - halfHeight, wallCenter.z),
+        color, normal
+    );
+
+    // 3. Left rectangle (left of window)
+    addQuad(
+        glm::vec3(wallCenter.x - halfWidth, wallCenter.y + windowHalfHeight + windowPos.y, wallCenter.z),
+        glm::vec3(wallCenter.x - windowHalfWidth + windowPos.x, wallCenter.y + windowHalfHeight + windowPos.y, wallCenter.z),
+        glm::vec3(wallCenter.x - windowHalfWidth + windowPos.x, wallCenter.y - windowHalfHeight + windowPos.y, wallCenter.z),
+        glm::vec3(wallCenter.x - halfWidth, wallCenter.y - windowHalfHeight + windowPos.y, wallCenter.z),
+        color, normal
+    );
+
+    // 4. Right rectangle (right of window)
+    addQuad(
+        glm::vec3(wallCenter.x + windowHalfWidth + windowPos.x, wallCenter.y + windowHalfHeight + windowPos.y, wallCenter.z),
+        glm::vec3(wallCenter.x + halfWidth, wallCenter.y + windowHalfHeight + windowPos.y, wallCenter.z),
+        glm::vec3(wallCenter.x + halfWidth, wallCenter.y - windowHalfHeight + windowPos.y, wallCenter.z),
+        glm::vec3(wallCenter.x + windowHalfWidth + windowPos.x, wallCenter.y - windowHalfHeight + windowPos.y, wallCenter.z),
+        color, normal
+    );
+}
+
 void Room::generateVertices() {
     vertices.clear();
     indices.clear();
 
     float halfWidth = roomWidth / 2.0f;
     float halfDepth = roomDepth / 2.0f;
-
-    // Helper function to add a quad with proper normals
-    auto addQuad = [&](const glm::vec3& p1, const glm::vec3& p2,
-        const glm::vec3& p3, const glm::vec3& p4,
-        const glm::vec3& color, const glm::vec3& normal) {
-            int baseIndex = vertices.size() / 9; // 9 floats per vertex
-
-            // Vertex 1
-            vertices.push_back(p1.x); vertices.push_back(p1.y); vertices.push_back(p1.z); // Position
-            vertices.push_back(color.r); vertices.push_back(color.g); vertices.push_back(color.b); // Color
-            vertices.push_back(normal.x); vertices.push_back(normal.y); vertices.push_back(normal.z); // Normal
-
-            // Vertex 2
-            vertices.push_back(p2.x); vertices.push_back(p2.y); vertices.push_back(p2.z);
-            vertices.push_back(color.r); vertices.push_back(color.g); vertices.push_back(color.b);
-            vertices.push_back(normal.x); vertices.push_back(normal.y); vertices.push_back(normal.z);
-
-            // Vertex 3
-            vertices.push_back(p3.x); vertices.push_back(p3.y); vertices.push_back(p3.z);
-            vertices.push_back(color.r); vertices.push_back(color.g); vertices.push_back(color.b);
-            vertices.push_back(normal.x); vertices.push_back(normal.y); vertices.push_back(normal.z);
-
-            // Vertex 4
-            vertices.push_back(p4.x); vertices.push_back(p4.y); vertices.push_back(p4.z);
-            vertices.push_back(color.r); vertices.push_back(color.g); vertices.push_back(color.b);
-            vertices.push_back(normal.x); vertices.push_back(normal.y); vertices.push_back(normal.z);
-
-            // Indices for two triangles
-            indices.push_back(baseIndex);
-            indices.push_back(baseIndex + 1);
-            indices.push_back(baseIndex + 2);
-            indices.push_back(baseIndex);
-            indices.push_back(baseIndex + 2);
-            indices.push_back(baseIndex + 3);
-        };
 
     // Floor (facing up)
     addQuad(
@@ -84,7 +140,7 @@ void Room::generateVertices() {
         glm::vec3(halfWidth, 0.0f, halfDepth),
         glm::vec3(-halfWidth, 0.0f, halfDepth),
         floorColor,
-        glm::vec3(0.0f, 1.0f, 0.0f)  // Normal pointing up
+        glm::vec3(0.0f, 1.0f, 0.0f)
     );
 
     // Ceiling (facing down)
@@ -94,48 +150,55 @@ void Room::generateVertices() {
         glm::vec3(halfWidth, roomHeight, halfDepth),
         glm::vec3(-halfWidth, roomHeight, halfDepth),
         ceilingColor,
-        glm::vec3(0.0f, -1.0f, 0.0f)  // Normal pointing down
+        glm::vec3(0.0f, -1.0f, 0.0f)
     );
 
-    // Back wall (facing forward/positive Z)
+    // Back wall (blue)
     addQuad(
         glm::vec3(-halfWidth, 0.0f, -halfDepth),
         glm::vec3(halfWidth, 0.0f, -halfDepth),
         glm::vec3(halfWidth, roomHeight, -halfDepth),
         glm::vec3(-halfWidth, roomHeight, -halfDepth),
-        wallColors[0],  // Blue
-        glm::vec3(0.0f, 0.0f, 1.0f)  // Normal pointing forward
+        wallColors[0],
+        glm::vec3(0.0f, 0.0f, 1.0f)
     );
 
-    // Front wall (facing backward/negative Z)
+    // Front wall (green) - SOLID
     addQuad(
         glm::vec3(-halfWidth, 0.0f, halfDepth),
         glm::vec3(halfWidth, 0.0f, halfDepth),
         glm::vec3(halfWidth, roomHeight, halfDepth),
         glm::vec3(-halfWidth, roomHeight, halfDepth),
-        wallColors[1],  // Green
-        glm::vec3(0.0f, 0.0f, -1.0f)  // Normal pointing backward
+        wallColors[1],
+        glm::vec3(0.0f, 0.0f, -1.0f)
     );
 
-    // Left wall (facing right/positive X)
+    // Left wall (red)
     addQuad(
         glm::vec3(-halfWidth, 0.0f, -halfDepth),
         glm::vec3(-halfWidth, 0.0f, halfDepth),
         glm::vec3(-halfWidth, roomHeight, halfDepth),
         glm::vec3(-halfWidth, roomHeight, -halfDepth),
-        wallColors[2],  // Red
-        glm::vec3(1.0f, 0.0f, 0.0f)  // Normal pointing right
+        wallColors[2],
+        glm::vec3(1.0f, 0.0f, 0.0f)
     );
 
-    // Right wall (facing left/negative X)
+    // Right wall (yellow)
     addQuad(
         glm::vec3(halfWidth, 0.0f, -halfDepth),
         glm::vec3(halfWidth, 0.0f, halfDepth),
         glm::vec3(halfWidth, roomHeight, halfDepth),
         glm::vec3(halfWidth, roomHeight, -halfDepth),
-        wallColors[3],  // Yellow
-        glm::vec3(-1.0f, 0.0f, 0.0f)  // Normal pointing left
+        wallColors[3],
+        glm::vec3(-1.0f, 0.0f, 0.0f)
     );
+
+    // INTERIOR WALL WITH WINDOW (if added)
+    if (hasInteriorWall) {
+        createWallWithWindow(interiorWallPos, interiorWallSize,
+            windowPosRelative, interiorWindowSize,
+            interiorWallColor, interiorWallNormal);
+    }
 
     needsUpdate = false;
 }
@@ -149,23 +212,16 @@ void Room::updateBuffers() {
 
     glBindVertexArray(VAO);
 
-    // Vertex Buffer
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
 
-    // Element Buffer
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
 
-    // Position attribute (location = 0)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-
-    // Color attribute (location = 1)
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
-
-    // Normal attribute (location = 2)
     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)(6 * sizeof(float)));
     glEnableVertexAttribArray(2);
 

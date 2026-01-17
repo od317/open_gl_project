@@ -12,6 +12,11 @@ uniform float ambientStrength;
 uniform float specularStrength;
 uniform int shininess;
 
+// Point light attenuation
+uniform float constant;
+uniform float linear;
+uniform float quadratic;
+
 void main()
 {
     // Ambient lighting
@@ -28,6 +33,15 @@ void main()
     vec3 reflectDir = reflect(-lightDir, norm);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
     vec3 specular = specularStrength * spec * lightColor;
+    
+    // Calculate attenuation (point light)
+    float distance = length(lightPos - FragPos);
+    float attenuation = 1.0 / (constant + linear * distance + quadratic * (distance * distance));
+    
+    // Apply attenuation to diffuse and specular (not ambient)
+    ambient *= attenuation;
+    diffuse *= attenuation;
+    specular *= attenuation;
     
     // Combine results
     vec3 result = (ambient + diffuse + specular) * Color;

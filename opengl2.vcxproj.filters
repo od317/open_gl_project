@@ -30,6 +30,12 @@
     <ClCompile Include="room.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="light_source.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="glass.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shader.h">
@@ -41,12 +47,27 @@
     <ClInclude Include="room.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="light_source.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="glass.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="shader.vert">
       <Filter>Source Files</Filter>
     </None>
     <None Include="shader.frag">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="glass.frag">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="glass.vert">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="glass_simple.frag">
       <Filter>Source Files</Filter>
     </None>
   </ItemGroup>
