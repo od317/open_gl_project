@@ -140,6 +140,7 @@
     <ClCompile Include="room.cpp" />
     <ClCompile Include="shader.cpp" />
     <ClCompile Include="skybox.cpp" />
+    <ClCompile Include="street.cpp" />
     <ClCompile Include="test_model.cpp" />
     <ClCompile Include="texture.cpp" />
   </ItemGroup>
@@ -153,6 +154,7 @@
     <ClInclude Include="room.h" />
     <ClInclude Include="shader.h" />
     <ClInclude Include="skybox.h" />
+    <ClInclude Include="street.h" />
     <ClInclude Include="texture.h" />
   </ItemGroup>
   <ItemGroup>

@@ -15,14 +15,15 @@
 #include "glass.h"
 #include "car.h"
 #include "floor.h"
+#include "street.h"
 
 // Camera and input variables
-glm::vec3 cameraPos = glm::vec3(0.0f, 3.0f, 10.0f);  // Start further back
+glm::vec3 cameraPos = glm::vec3(0.0f, 8.0f, 20.0f);  // Start further back
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
-bool firstMouse = true; 
+bool firstMouse = true;
 float yaw = -90.0f, pitch = 0.0f;
 float lastX = 400.0f, lastY = 300.0f;
 float fov = 60.0f;
@@ -59,12 +60,20 @@ bool showControls = true;
 bool glassVisible = true;
 bool lightMoving = true;
 
+
+
 // Car variables - TWO CARS!
 Car* porsche = nullptr;
 Car* koenigsegg = nullptr;
 bool porscheLoaded = false;
 bool koenigseggLoaded = false;
 
+Street* mainStreet = nullptr;
+float streetRotation = 90.0f;  // ADD THIS: Rotate street by 90 degrees
+bool streetCreated = false;
+std::vector<StreetLight*> streetLights;
+std::vector<glm::vec3> streetLightPositions;
+std::vector<glm::vec3> streetLightColors;
 // Function prototypes
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -74,6 +83,8 @@ void printTransparencyControls();
 void printCarInfo();
 void toggleDriverSeatView(int carIndex);
 void updateDriverSeatCamera();
+void updateMultipleLights(Shader& shader, const std::vector<glm::vec3>& positions,
+    const std::vector<glm::vec3>& colors, const glm::vec3& viewPos);
 
 float transparencyStep = 0.1f;
 bool showTransparencyInfo = true;
@@ -318,7 +329,7 @@ int main() {
 
     if (porscheLoaded) {
         porsche->SetRotation(180.0f);  // Face forward
-        porsche->SetPosition(glm::vec3(-4.0f, 0.3f, 0.0f));  // Add this line to ensure position
+        porsche->SetPosition(glm::vec3(-10.0f, 0.3f, 0.0f));  // Left exhibition platform
     }
 
     // Load Koenigsegg
@@ -334,7 +345,7 @@ int main() {
 
     if (koenigseggLoaded) {
         koenigsegg->SetRotation(180.0f);  // Face forward
-        koenigsegg->SetPosition(glm::vec3(4.0f, 0.3f, 0.0f));  // Add this line
+        koenigsegg->SetPosition(glm::vec3(10.0f, 0.3f, 0.0f));  // Right exhibition platform
     }
 
     std::cout << "\n=== Car Loading Complete ===" << std::endl;
@@ -344,9 +355,6 @@ int main() {
     Skybox skybox;
     skybox.setup();
     bool skyboxLoaded = skybox.loadCrossFormatCubemap("textures/skybox/Cubemap_Sky_06-512x512.png");
-
-
-
 
     // If that fails, try a relative path
     if (!skyboxLoaded) {
@@ -359,89 +367,80 @@ int main() {
         std::cout << "Failed to load skybox image, using default gradient skybox" << std::endl;
     }
 
-
-    showroomFloor = new Floor(
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(100.0f, 1.0f, 100.0f),
-        glm::vec3(0.7f, 0.7f, 0.7f)  // Neutral gray
-    );
-
-    // Setup floor
-    showroomFloor->setup();
-
-    // Try to load the rubber tiles texture
-    std::string floorTexturePath = "textures/floor/rubber_tiles_diff_1k.jpg";
-
-
-    if (fileExists(floorTexturePath)) {
-        std::cout << "Loading floor texture: " << floorTexturePath << std::endl;
-        bool textureLoaded = showroomFloor->loadTexture(floorTexturePath);
-
-        if (textureLoaded) {
-            std::cout << "Successfully loaded rubber tiles floor texture!" << std::endl;
-            // Adjust texture repeat for large floor
-            // For a 25x25 floor, we might want the texture to repeat 5x5 times
-            // We'll handle this in the shader or by modifying UVs
-        }
-        else {
-            std::cout << "Failed to load rubber tiles texture, using default checkerboard" << std::endl;
-        }
-    }
-    else {
-        std::cout << "Floor texture not found at: " << floorTexturePath << std::endl;
-        std::cout << "Using default checkerboard floor pattern" << std::endl;
-
-        // Try alternative paths
-        std::vector<std::string> alternativePaths = {
-            "rubber_tiles_diff_1k.jpg",
-            "../textures/floor/rubber_tiles_diff_1k.jpg",
-            "C:/Users/HP/Downloads/rubber_tiles_diff_1k.jpg"
-        };
-
-        for (const auto& path : alternativePaths) {
-            if (fileExists(path)) {
-                std::cout << "Found floor texture at: " << path << std::endl;
-                showroomFloor->loadTexture(path);
-                break;
-            }
-        }
-    }
-
-    // Create LARGER room (20x8x20)
-    Room room(20.0f, 8.0f, 20.0f);  // Width, Height, Depth - MUCH larger!
-    room.addInteriorWallWithWindow(
-        glm::vec3(0.0f, 3.0f, 0.0f),      // Position
-        glm::vec3(15.0f, 5.0f, 0.1f),     // Size (wider window)
-        glm::vec3(0.0f, 1.0f, 0.0f),      // Wall color
-        glm::vec3(8.0f, 4.0f, 0.0f)       // Window size
-    );
+    // Create HUGE exhibition hall for car showcase
+    Room room(40.0f, 15.0f, 30.0f);  // Width: 40m, Height: 15m, Depth: 30m - EXHIBITION SIZE!
+    room.setWallColor(glm::vec3(1.0f, 1.0f, 1.0f));      // WHITE walls for brightness
+    room.setFloorColor(glm::vec3(0.95f, 0.95f, 0.95f));  // Very light gray floor
+    room.setCeilingColor(glm::vec3(1.0f, 1.0f, 1.0f));   // WHITE ceiling
     room.setup();
 
-    // Create glass window
+    // Create glass window for the exhibition (much larger)
     glm::vec3 windowPos = room.getWindowPosition();
-    windowPos.z += 0.05f;
-    GlassWindow glassWindow(windowPos, glm::vec3(8.0f, 4.0f, 0.02f));  // Larger window
+    windowPos.z += 0.05f;  // Bring it slightly forward
+    GlassWindow glassWindow(windowPos, glm::vec3(25.0f, 8.0f, 0.02f));  // Large exhibition window
     glassWindow.setAsTintedGlass();
     glassWindow.setup();
 
-    // Create light - positioned higher for larger room
-    LightSource lightSource(glm::vec3(0.0f, 6.0f, 0.0f), glm::vec3(1.0f, 1.0f, 0.8f));
+    // Create main light - positioned high for exhibition hall
+    LightSource lightSource(glm::vec3(0.0f, 12.0f, 0.0f), glm::vec3(1.2f, 1.2f, 1.0f));  // Bright warm light
     lightSource.setup();
-    lightSource.setAmbientStrength(0.3f);  // Brighter for larger space
+    lightSource.setAmbientStrength(0.8f);    // Much brighter ambient
+    lightSource.setSpecularStrength(1.2f);   // Brighter specular
+
+    // Create street in front of the exhibition hall
+    mainStreet = new Street(
+        glm::vec3(8.0f, 0.0f, 45.0f),  // Position (moved further) - CHANGE THIS
+        glm::vec3(40.0f, 0.1f, 200.0f), // Dimensions
+        glm::vec3(0.05f, 0.05f, 0.05f) // BLACK street color (very dark)
+    );
+
+    // Clear light position vectors
+    streetLightPositions.clear();
+    streetLightColors.clear();
+
+    // Create street lights along the street
+    for (int i = -8; i <= 8; i++) {  // CHANGED: from -4..4 to -8..8 (more lights)
+        float xPos = static_cast<float>(i) * 5.0f + 8.0f;  // ADD +8.0f to match street X position
+
+        // Since street is rotated 90 degrees, sidewalk is along what was originally Z-axis
+        // Place lights on both sides of the rotated street
+        glm::vec3 lightPosLeft = glm::vec3(xPos, 0.0f, 45.0f - 20.0f);   // Left sidewalk: 20 units from center in -Z
+        glm::vec3 lightPosRight = glm::vec3(xPos, 0.0f, 45.0f + 20.0f);  // Right sidewalk: 20 units from center in +Z
+
+        streetLights.push_back(new StreetLight(lightPosLeft));
+        streetLights.push_back(new StreetLight(lightPosRight));
+
+        // For lighting calculations, the light source is at height
+        streetLightPositions.push_back(glm::vec3(xPos, 3.0f, 45.0f - 20.0f));  // Light at 3m height
+        streetLightPositions.push_back(glm::vec3(xPos, 3.0f, 45.0f + 20.0f));  // Light at 3m height
+        streetLightColors.push_back(glm::vec3(1.0f, 1.0f, 0.8f));  // Warm light
+        streetLightColors.push_back(glm::vec3(1.0f, 1.0f, 0.8f));  // Warm light
+    }
+
+    // Add the main hall light to lighting calculations
+    streetLightPositions.push_back(lightSource.getPosition());
+    streetLightColors.push_back(lightSource.getColor());
+
+    // Add a general ambient light for the street area
+    streetLightPositions.push_back(glm::vec3(8.0f, 8.0f, 45.0f));  // Changed from (0.0f, 8.0f, 45.0f)
+    streetLightColors.push_back(glm::vec3(1.0f, 1.0f, 0.9f));
+
+    // Store index of animated light (main hall light)
+    int animatedLightIndex = streetLightPositions.size() - 2; // Second to last
 
     // Create decorative elements for the showroom
     unsigned int cubeVAO, cubeVBO, cubeEBO;
     float cubeVertices[] = {
         // Position              // Color
-        -1.0f, 0.0f, -1.0f,      0.8f, 0.8f, 0.8f,  // Gray platform
-         1.0f, 0.0f, -1.0f,      0.8f, 0.8f, 0.8f,
-         1.0f, 0.1f, -1.0f,      0.9f, 0.9f, 0.9f,
-        -1.0f, 0.1f, -1.0f,      0.9f, 0.9f, 0.9f,
+        -1.0f, 0.0f, -1.0f,      0.9f, 0.9f, 0.9f,  // Light gray platform
+         1.0f, 0.0f, -1.0f,      0.9f, 0.9f, 0.9f,
+         1.0f, 0.1f, -1.0f,      1.0f, 1.0f, 1.0f,
+        -1.0f, 0.1f, -1.0f,      1.0f, 1.0f, 1.0f,
 
-        -1.0f, 0.0f,  1.0f,      0.8f, 0.8f, 0.8f,
-         1.0f, 0.0f,  1.0f,      0.8f, 0.8f, 0.8f,
-         1.0f, 0.1f,  1.0f,      0.9f, 0.9f, 0.9f,
-        -1.0f, 0.1f,  1.0f,      0.9f, 0.9f, 0.9f
+        -1.0f, 0.0f,  1.0f,      0.9f, 0.9f, 0.9f,
+         1.0f, 0.0f,  1.0f,      0.9f, 0.9f, 0.9f,
+         1.0f, 0.1f,  1.0f,      1.0f, 1.0f, 1.0f,
+        -1.0f, 0.1f,  1.0f,      1.0f, 1.0f, 1.0f
     };
 
     unsigned int cubeIndices[] = {
@@ -470,7 +469,7 @@ int main() {
 
     // Main render loop
     while (!glfwWindowShouldClose(window)) {
-        float currentFrame = glfwGetTime();
+        float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
@@ -488,69 +487,81 @@ int main() {
                 cos(lightAngle) * 8.0f
             );
             lightSource.setPosition(newLightPos);
+
+            // Update the animated light position in our lighting array
+            if (animatedLightIndex >= 0 && animatedLightIndex < streetLightPositions.size()) {
+                streetLightPositions[animatedLightIndex] = newLightPos;
+            }
         }
 
         processInput(window, room, lightSource, glassWindow);
 
-        glClearColor(0.15f, 0.15f, 0.2f, 1.0f);  // Darker blue for showroom
+        glClearColor(0.2f, 0.2f, 0.25f, 1.0f);  // BRIGHTER background
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glm::mat4 projection = glm::perspective(glm::radians(fov), 1000.0f / 800.0f, 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(fov), 1000.0f / 800.0f, 0.1f, 200.0f);
         glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 
         glDepthMask(GL_FALSE); // Disable depth writing for skybox
         skybox.draw(skyboxShader.ID, view, projection);
         glDepthMask(GL_TRUE); // Re-enable depth writing
 
-
-        //if (showroomFloor) {
-        //    texturedShader.use();
-        //    texturedShader.setMat4("projection", projection);
-        //    texturedShader.setMat4("view", view);
-
-        //    // Set lighting uniforms for textured shader
-        //    texturedShader.setVec3("lightPos", lightSource.getPosition());
-        //    texturedShader.setVec3("viewPos", cameraPos);
-        //    texturedShader.setVec3("lightColor", lightSource.getColor());
-        //    texturedShader.setFloat("ambientStrength", 0.3f);
-        //    texturedShader.setFloat("specularStrength", 0.5f);
-        //    texturedShader.setInt("shininess", 32);
-        //    texturedShader.setFloat("constant", 1.0f);
-        //    texturedShader.setFloat("linear", 0.09f);
-        //    texturedShader.setFloat("quadratic", 0.032f);
-
-        //    showroomFloor->draw(texturedShader.ID);
-        //}
-
-        // 1. Draw room with lighting
+        // 1. Draw the street and outdoor environment FIRST (farthest objects)
         lightingShader.use();
         lightingShader.setMat4("projection", projection);
         lightingShader.setMat4("view", view);
+
+        // Update multiple lights (street lights + main light)
+        updateMultipleLights(lightingShader, streetLightPositions, streetLightColors, cameraPos);
+
+        // Draw street
+        if (mainStreet) {
+            glm::mat4 streetModel = glm::mat4(1.0f);
+            streetModel = glm::translate(streetModel, glm::vec3(8.0f, 0.0f, 45.0f));  // Use the same position: (8.0f, 0.0f, 45.0f)
+            streetModel = glm::rotate(streetModel, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+            streetModel = glm::translate(streetModel, glm::vec3(-8.0f, 0.0f, -45.0f));  // Adjusted to -8.0f instead of 0.0f
+            lightingShader.setMat4("model", streetModel);
+            mainStreet->draw();
+        }
+
+        // Draw street lights
+        for (size_t i = 0; i < streetLights.size(); i++) {
+            glm::mat4 lightModel = glm::mat4(1.0f);
+
+            // Street lights are already in correct world position
+            // No rotation needed - they're on the sidewalk, not part of the street mesh
+            glm::vec3 lightPos = streetLights[i]->getPosition();
+            lightModel = glm::translate(lightModel, lightPos);
+
+            lightingShader.setMat4("model", lightModel);
+            streetLights[i]->draw();
+        }
+
+        // 2. Draw the exhibition hall
         lightingShader.setMat4("model", glm::mat4(1.0f));
-        lightSource.updateShader(lightingShader.ID, cameraPos);
         room.draw();
 
-        // 2. Draw car platforms
+        // 3. Draw car platforms
         lightingShader.use();
         lightingShader.setMat4("projection", projection);
         lightingShader.setMat4("view", view);
 
-        // Platform for Porsche
+        // Platform for Porsche (updated position)
         glm::mat4 platform = glm::mat4(1.0f);
-        platform = glm::translate(platform, glm::vec3(-4.0f, 0.0f, 0.0f));
-        platform = glm::scale(platform, glm::vec3(3.0f, 1.0f, 5.0f));
+        platform = glm::translate(platform, glm::vec3(-10.0f, 0.0f, 0.0f));
+        platform = glm::scale(platform, glm::vec3(8.0f, 0.2f, 15.0f));
         lightingShader.setMat4("model", platform);
         glBindVertexArray(cubeVAO);
         glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 
-        // Platform for Koenigsegg
+        // Platform for Koenigsegg (updated position)
         platform = glm::mat4(1.0f);
-        platform = glm::translate(platform, glm::vec3(4.0f, 0.0f, 0.0f));
-        platform = glm::scale(platform, glm::vec3(3.0f, 1.0f, 5.0f));
+        platform = glm::translate(platform, glm::vec3(10.0f, 0.0f, 0.0f));
+        platform = glm::scale(platform, glm::vec3(8.0f, 0.2f, 15.0f));
         lightingShader.setMat4("model", platform);
         glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 
-        // 3. Draw the cars (NO ROTATION)
+        // 4. Draw the cars
         lightingShader.use();
         lightingShader.setMat4("projection", projection);
         lightingShader.setMat4("view", view);
@@ -562,7 +573,7 @@ int main() {
         else {
             // Placeholder for Porsche
             glm::mat4 placeholder = glm::mat4(1.0f);
-            placeholder = glm::translate(placeholder, glm::vec3(-4.0f, 0.5f, 0.0f));
+            placeholder = glm::translate(placeholder, glm::vec3(-10.0f, 0.5f, 0.0f));
             placeholder = glm::scale(placeholder, glm::vec3(1.5f, 0.8f, 3.0f));
             lightingShader.setMat4("model", placeholder);
             glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
@@ -575,33 +586,25 @@ int main() {
         else {
             // Placeholder for Koenigsegg
             glm::mat4 placeholder = glm::mat4(1.0f);
-            placeholder = glm::translate(placeholder, glm::vec3(4.0f, 0.5f, 0.0f));
+            placeholder = glm::translate(placeholder, glm::vec3(10.0f, 0.5f, 0.0f));
             placeholder = glm::scale(placeholder, glm::vec3(1.5f, 0.8f, 3.0f));
             lightingShader.setMat4("model", placeholder);
             glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
         }
 
-        // 4. Draw decorative elements behind window
-        lightingShader.use();
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, 2.0f, 10.0f));
-        model = glm::scale(model, glm::vec3(5.0f, 3.0f, 1.0f));
-        lightingShader.setMat4("model", model);
-        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-
-        // 5. Draw the light source
+        // 5. Draw the light source (visual representation)
         lightCubeShader.use();
         lightCubeShader.setMat4("projection", projection);
         lightCubeShader.setMat4("view", view);
 
-        model = glm::mat4(1.0f);
+        glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, lightSource.getPosition());
-        model = glm::scale(model, glm::vec3(0.3f));  // Slightly larger light
+        model = glm::scale(model, glm::vec3(0.3f));
         lightCubeShader.setMat4("model", model);
         lightCubeShader.setVec3("lightColor", lightSource.getColor());
         lightSource.draw(lightCubeShader.ID);
 
-        // 6. Draw glass window
+        // 6. Draw glass window (transparent, drawn last)
         if (glassVisible) {
             glassShader.use();
             glassShader.setMat4("projection", projection);
@@ -631,6 +634,17 @@ int main() {
     room.cleanup();
     lightSource.cleanup();
     glassWindow.cleanup();
+    if (mainStreet) {
+        mainStreet->cleanup();
+        delete mainStreet;
+    }
+
+    // Cleanup street lights
+    for (size_t i = 0; i < streetLights.size(); i++) {
+        delete streetLights[i];
+    }
+    streetLights.clear();
+
     if (porsche) delete porsche;
     if (koenigsegg) delete koenigsegg;
     glDeleteVertexArrays(1, &cubeVAO);
@@ -654,6 +668,8 @@ void printCarInfo() {
     }
     std::cout << std::endl;
 }
+
+
 
 // Enhanced input processing with driver seat controls
 void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindow& glass) {
@@ -842,7 +858,7 @@ void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindo
     }
 
     // Car movement controls (arrow keys)
-    float carSpeed = 3.0f * deltaTime;
+    float carSpeed = 10.0f * deltaTime;  // Increased for street driving
     if (currentCar && currentCarLoaded) {
         glm::vec3 carPos = currentCar->GetPosition();
 
@@ -857,48 +873,16 @@ void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindo
 
         currentCar->SetPosition(carPos);
 
-        // Car scale controls (F and G keys)
-        static bool fPressed = false;
-        static bool gPressed = false;
-        static float porscheScale = 0.8f;
-        static float koenigseggScale = 0.08f;
-
-        if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS && !fPressed) {
-            fPressed = true;
-            if (selectedCar == 0) {
-                porscheScale *= 1.1f;
-                if (porscheScale > 2.0f) porscheScale = 2.0f;
-                porsche->SetScale(glm::vec3(porscheScale));
-                std::cout << "Porsche scale: " << porscheScale << std::endl;
-            }
-            else {
-                koenigseggScale *= 1.1f;
-                if (koenigseggScale > 0.1f) koenigseggScale = 0.1f;
-                koenigsegg->SetScale(glm::vec3(koenigseggScale));
-                std::cout << "Koenigsegg scale: " << koenigseggScale << std::endl;
-            }
+        // Add car rotation based on movement (optional enhancement)
+        if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+            float rotation = currentCar->GetRotationAngle();
+            rotation += 50.0f * deltaTime;  // Turn left
+            currentCar->SetRotation(rotation);
         }
-        if (glfwGetKey(window, GLFW_KEY_F) == GLFW_RELEASE) {
-            fPressed = false;
-        }
-
-        if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS && !gPressed) {
-            gPressed = true;
-            if (selectedCar == 0) {
-                porscheScale *= 0.9f;
-                if (porscheScale < 0.1f) porscheScale = 0.1f;
-                porsche->SetScale(glm::vec3(porscheScale));
-                std::cout << "Porsche scale: " << porscheScale << std::endl;
-            }
-            else {
-                koenigseggScale *= 0.9f;
-                if (koenigseggScale < 0.001f) koenigseggScale = 0.001f;
-                koenigsegg->SetScale(glm::vec3(koenigseggScale));
-                std::cout << "Koenigsegg scale: " << koenigseggScale << std::endl;
-            }
-        }
-        if (glfwGetKey(window, GLFW_KEY_G) == GLFW_RELEASE) {
-            gPressed = false;
+        if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+            float rotation = currentCar->GetRotationAngle();
+            rotation -= 50.0f * deltaTime;  // Turn right
+            currentCar->SetRotation(rotation);
         }
     }
 
@@ -1064,7 +1048,7 @@ void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindo
 
     // CAMERA MOVEMENT - Only in free camera mode
     if (cameraMode == FREE_CAMERA) {
-        float cameraSpeed = 8.0f * deltaTime;
+        float cameraSpeed = 15.0f * deltaTime;  // Increased speed for larger space
         glm::vec3 newPos = cameraPos;
 
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
@@ -1080,11 +1064,11 @@ void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindo
         if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
             newPos -= cameraSpeed * cameraUp;
 
-        // DEBUG: Print camera position to see if it's changing
+        // DEBUG: Print camera position
         static bool spacePressed = false;
         if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !spacePressed) {
             spacePressed = true;
-            std::cout << "Free Camera Position: (" << cameraPos.x << ", "
+            std::cout << "Camera Position: (" << cameraPos.x << ", "
                 << cameraPos.y << ", " << cameraPos.z << ")" << std::endl;
             std::cout << "Camera Front: (" << cameraFront.x << ", "
                 << cameraFront.y << ", " << cameraFront.z << ")" << std::endl;
@@ -1093,7 +1077,7 @@ void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindo
             spacePressed = false;
         }
 
-        // Update camera position WITHOUT collision detection for now
+        // Update camera position
         cameraPos = newPos;
     }
 }
@@ -1109,7 +1093,10 @@ void printTransparencyControls() {
     std::cout << "  [F2]    : Toggle Koenigsegg driver seat view\n";
     std::cout << "  [ESC/E] : Exit driver seat view\n";
     std::cout << "  [C]     : Show selected car info\n";
-    std::cout << "  [↑↓←→]  : Move selected car\n";
+    std::cout << "  [Arrow Up]   : Move car forward\n";
+    std::cout << "  [Arrow Down] : Move car backward\n";
+    std::cout << "  [Arrow Left] : Turn/Move car left\n";
+    std::cout << "  [Arrow Right]: Turn/Move car right\n";
     std::cout << "  [F/G]   : Increase/decrease car size\n";
     std::cout << "\n      DRIVER SEAT SETUP\n";
     std::cout << "  [F3]    : Help for finding driver seat position\n";
@@ -1135,15 +1122,15 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     if (firstMouse) {
-        lastX = xpos;
-        lastY = ypos;
+        lastX = static_cast<float>(xpos);
+        lastY = static_cast<float>(ypos);
         firstMouse = false;
     }
 
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos;
-    lastX = xpos;
-    lastY = ypos;
+    float xoffset = static_cast<float>(xpos) - lastX;
+    float yoffset = lastY - static_cast<float>(ypos);
+    lastX = static_cast<float>(xpos);
+    lastY = static_cast<float>(ypos);
 
     float sensitivity = 0.1f;
     xoffset *= sensitivity;
@@ -1163,7 +1150,34 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-    fov -= (float)yoffset;
+    fov -= static_cast<float>(yoffset);
     if (fov < 20.0f) fov = 20.0f;
     if (fov > 90.0f) fov = 90.0f;
+}
+
+
+
+void updateMultipleLights(Shader& shader, const std::vector<glm::vec3>& positions,
+    const std::vector<glm::vec3>& colors, const glm::vec3& viewPos) {
+    shader.use();
+
+    // Pass view position
+    shader.setVec3("viewPos", viewPos);
+
+    // Pass number of lights
+    int numLights = std::min((int)positions.size(), 10);  // Limit to 10 lights
+    shader.setInt("numLights", numLights);
+
+    // Pass each light's properties
+    for (int i = 0; i < numLights; i++) {
+        std::string lightStr = "lights[" + std::to_string(i) + "]";
+        shader.setVec3(lightStr + ".position", positions[i]);
+        shader.setVec3(lightStr + ".color", colors[i]);
+        shader.setFloat(lightStr + ".ambient", 0.3f);
+        shader.setFloat(lightStr + ".diffuse", 0.8f);
+        shader.setFloat(lightStr + ".specular", 0.5f);
+        shader.setFloat(lightStr + ".constant", 1.0f);
+        shader.setFloat(lightStr + ".linear", 0.09f);
+        shader.setFloat(lightStr + ".quadratic", 0.032f);
+    }
 }
