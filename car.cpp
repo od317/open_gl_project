@@ -2,9 +2,11 @@
 #include "model.h"  // Include model.h here, not in car.h
 #include <iostream>
 
+// Initialize with default color and no override
 Car::Car(const std::string& modelPath, glm::vec3 position)
     : position(position), rotationAngle(0.0f),
-    rotationAxis(0.0f, 1.0f, 0.0f), scale(1.0f) {
+    rotationAxis(0.0f, 1.0f, 0.0f), scale(1.0f),
+    colorOverride(1.0f, 1.0f, 1.0f), useColorOverride(false) {  // ADD THIS
 
     try {
         model = new Model(modelPath);
@@ -22,9 +24,36 @@ Car::~Car() {
     }
 }
 
+// ADD THESE METHODS TO Car class:
+void Car::SetColor(glm::vec3 color) {
+    colorOverride = color;
+    useColorOverride = true;
+    std::cout << "Car color set to: ("
+        << color.r << ", " << color.g << ", " << color.b << ")" << std::endl;
+}
+
+void Car::ResetColor() {
+    useColorOverride = false;
+    std::cout << "Car color reset to original" << std::endl;
+}
+
+void Car::EnableColorOverride(bool enable) {
+    useColorOverride = enable;
+}
+
 void Car::Draw(Shader& shader) {
     if (model) {
         shader.setMat4("model", GetModelMatrix());
+
+        // Pass color override to shader if enabled
+        if (useColorOverride) {
+            shader.setBool("useColorOverride", true);
+            shader.setVec3("colorOverride", colorOverride);
+        }
+        else {
+            shader.setBool("useColorOverride", false);
+        }
+
         model->Draw(shader);
     }
 }
@@ -51,7 +80,7 @@ glm::mat4 Car::GetModelMatrix() const {
 }
 
 // SimpleCar implementation
-SimpleCar::SimpleCar(glm::vec3 position) : position(position) {
+SimpleCar::SimpleCar(glm::vec3 position) : position(position), color(1.0f, 0.0f, 0.0f) {  // Default red
     VAO = VBO = EBO = 0;
     setup();
 }
@@ -60,21 +89,26 @@ SimpleCar::~SimpleCar() {
     cleanup();
 }
 
+// ADD FOR SIMPLE CAR
+void SimpleCar::SetColor(glm::vec3 newColor) {
+    color = newColor;
+}
+
 void SimpleCar::createCarMesh() {
-    // Simple car shape
+    // Simple car shape - REMOVE HARDCODED COLORS
     float vertices[] = {
-        // Positions          // Normals         // Colors (for testing)
+        // Positions          // Normals         // Colors (white - will be overridden)
         // Front
-        -0.8f, 0.0f, -0.4f,   0.0f, 0.0f, 1.0f,  1.0f, 0.0f, 0.0f,
-         0.8f, 0.0f, -0.4f,   0.0f, 0.0f, 1.0f,  1.0f, 0.0f, 0.0f,
-         0.8f, 0.5f, -0.4f,   0.0f, 0.0f, 1.0f,  1.0f, 0.0f, 0.0f,
-        -0.8f, 0.5f, -0.4f,   0.0f, 0.0f, 1.0f,  1.0f, 0.0f, 0.0f,
+        -0.8f, 0.0f, -0.4f,   0.0f, 0.0f, 1.0f,  1.0f, 1.0f, 1.0f,
+         0.8f, 0.0f, -0.4f,   0.0f, 0.0f, 1.0f,  1.0f, 1.0f, 1.0f,
+         0.8f, 0.5f, -0.4f,   0.0f, 0.0f, 1.0f,  1.0f, 1.0f, 1.0f,
+        -0.8f, 0.5f, -0.4f,   0.0f, 0.0f, 1.0f,  1.0f, 1.0f, 1.0f,
 
         // Back
-        -0.8f, 0.0f,  0.4f,   0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f,
-         0.8f, 0.0f,  0.4f,   0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f,
-         0.8f, 0.5f,  0.4f,   0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f,
-        -0.8f, 0.5f,  0.4f,   0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f
+        -0.8f, 0.0f,  0.4f,   0.0f, 0.0f, -1.0f, 1.0f, 1.0f, 1.0f,
+         0.8f, 0.0f,  0.4f,   0.0f, 0.0f, -1.0f, 1.0f, 1.0f, 1.0f,
+         0.8f, 0.5f,  0.4f,   0.0f, 0.0f, -1.0f, 1.0f, 1.0f, 1.0f,
+        -0.8f, 0.5f,  0.4f,   0.0f, 0.0f, -1.0f, 1.0f, 1.0f, 1.0f
     };
 
     unsigned int indices[] = {
@@ -112,7 +146,7 @@ void SimpleCar::createCarMesh() {
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
-    // Color attribute (for testing)
+    // Color attribute
     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)(6 * sizeof(float)));
     glEnableVertexAttribArray(2);
 
@@ -124,6 +158,10 @@ void SimpleCar::Draw(Shader& shader) {
     modelMat = glm::translate(modelMat, position);
     modelMat = glm::scale(modelMat, glm::vec3(0.5f)); // Scale down
     shader.setMat4("model", modelMat);
+
+    // Use custom color for SimpleCar
+    shader.setBool("useColorOverride", true);
+    shader.setVec3("colorOverride", color);
 
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);

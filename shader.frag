@@ -22,6 +22,10 @@ uniform int numLights;
 uniform vec3 viewPos;
 uniform float shininess = 32.0;
 
+// ADD THESE UNIFORMS
+uniform bool useColorOverride;
+uniform vec3 colorOverride;
+
 vec3 calculateLight(Light light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 objectColor) {
     // Ambient
     vec3 ambient = light.ambient * light.color * objectColor;
@@ -49,12 +53,15 @@ void main()
     vec3 norm = normalize(Normal);
     vec3 viewDir = normalize(viewPos - FragPos);
     
+    // Use color override if enabled, otherwise use original Color
+    vec3 objectColor = useColorOverride ? colorOverride : Color;
+    
     // Start with a base ambient (dark scene)
-    vec3 result = vec3(0.1, 0.1, 0.15) * Color;
+    vec3 result = vec3(0.1, 0.1, 0.15) * objectColor;
     
     // Calculate all lights
     for(int i = 0; i < numLights; i++) {
-        result += calculateLight(lights[i], norm, FragPos, viewDir, Color);
+        result += calculateLight(lights[i], norm, FragPos, viewDir, objectColor);
     }
     
     // Gamma correction

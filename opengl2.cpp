@@ -362,7 +362,7 @@ int main() {
 
     if (porscheLoaded) {
         porsche->SetRotation(180.0f);  // Face forward
-        porsche->SetPosition(glm::vec3(-10.0f, 0.3f, 0.0f));  // Left exhibition platform
+        porsche->SetPosition(glm::vec3(-10.0f, 0.7f, 0.0f));  // Left exhibition platform
     }
 
     // Load Koenigsegg
@@ -800,8 +800,6 @@ void printCarInfo() {
     std::cout << std::endl;
 }
 
-
-
 // Enhanced input processing with driver seat controls
 void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindow& glass) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
@@ -1072,6 +1070,129 @@ void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindo
             }
         }
     }
+
+    static bool rPressed = false, gPressed = false, bPressed = false, yPressed = false;
+    static bool wPressed = false, oPressed = false, pPressed2 = false;
+    static bool resetPressed = false;
+
+    // Red color
+    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS && !rPressed) {
+        rPressed = true;
+        if (selectedCar == 0 && porsche) {
+            porsche->SetColor(glm::vec3(1.0f, 0.0f, 0.0f));  // Red
+            porscheColor = glm::vec3(1.0f, 0.0f, 0.0f);
+        }
+        else if (selectedCar == 1 && koenigsegg) {
+            koenigsegg->SetColor(glm::vec3(1.0f, 0.0f, 0.0f));
+            koenigseggColor = glm::vec3(1.0f, 0.0f, 0.0f);
+        }
+        std::cout << "Set car color to RED" << std::endl;
+    }
+    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_RELEASE) rPressed = false;
+
+    // Green color
+    if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS && !gPressed) {
+        gPressed = true;
+        if (selectedCar == 0 && porsche) {
+            porsche->SetColor(glm::vec3(0.0f, 1.0f, 0.0f));  // Green
+            porscheColor = glm::vec3(0.0f, 1.0f, 0.0f);
+        }
+        else if (selectedCar == 1 && koenigsegg) {
+            koenigsegg->SetColor(glm::vec3(0.0f, 1.0f, 0.0f));
+            koenigseggColor = glm::vec3(0.0f, 1.0f, 0.0f);
+        }
+        std::cout << "Set car color to GREEN" << std::endl;
+    }
+    if (glfwGetKey(window, GLFW_KEY_G) == GLFW_RELEASE) gPressed = false;
+
+    // Blue color
+    if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS && !bPressed) {
+        bPressed = true;
+        if (selectedCar == 0 && porsche) {
+            porsche->SetColor(glm::vec3(0.0f, 0.0f, 1.0f));  // Blue
+            porscheColor = glm::vec3(0.0f, 0.0f, 1.0f);
+        }
+        else if (selectedCar == 1 && koenigsegg) {
+            koenigsegg->SetColor(glm::vec3(0.0f, 0.0f, 1.0f));
+            koenigseggColor = glm::vec3(0.0f, 0.0f, 1.0f);
+        }
+        std::cout << "Set car color to BLUE" << std::endl;
+    }
+    if (glfwGetKey(window, GLFW_KEY_B) == GLFW_RELEASE) bPressed = false;
+
+    // Yellow color
+    if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS && !yPressed) {
+        yPressed = true;
+        if (selectedCar == 0 && porsche) {
+            porsche->SetColor(glm::vec3(1.0f, 1.0f, 0.0f));  // Yellow
+            porscheColor = glm::vec3(1.0f, 1.0f, 0.0f);
+        }
+        else if (selectedCar == 1 && koenigsegg) {
+            koenigsegg->SetColor(glm::vec3(1.0f, 1.0f, 0.0f));
+            koenigseggColor = glm::vec3(1.0f, 1.0f, 0.0f);
+        }
+        std::cout << "Set car color to YELLOW" << std::endl;
+    }
+    if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_RELEASE) yPressed = false;
+
+    // White color
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS && !wPressed) {
+        wPressed = true;
+        if (selectedCar == 0 && porsche) {
+            porsche->SetColor(glm::vec3(1.0f, 1.0f, 1.0f));  // White
+            porscheColor = glm::vec3(1.0f, 1.0f, 1.0f);
+        }
+        else if (selectedCar == 1 && koenigsegg) {
+            koenigsegg->SetColor(glm::vec3(1.0f, 1.0f, 1.0f));
+            koenigseggColor = glm::vec3(1.0f, 1.0f, 1.0f);
+        }
+        std::cout << "Set car color to WHITE" << std::endl;
+    }
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_RELEASE) wPressed = false;
+
+    // Orange color
+    if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS && !oPressed) {
+        oPressed = true;
+        if (selectedCar == 0 && porsche) {
+            porsche->SetColor(glm::vec3(1.0f, 0.5f, 0.0f));  // Orange
+            porscheColor = glm::vec3(1.0f, 0.5f, 0.0f);
+        }
+        else if (selectedCar == 1 && koenigsegg) {
+            koenigsegg->SetColor(glm::vec3(1.0f, 0.5f, 0.0f));
+            koenigseggColor = glm::vec3(1.0f, 0.5f, 0.0f);
+        }
+        std::cout << "Set car color to ORANGE" << std::endl;
+    }
+    if (glfwGetKey(window, GLFW_KEY_O) == GLFW_RELEASE) oPressed = false;
+
+    // Purple color
+    if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS && !pPressed2) {
+        pPressed2 = true;
+        if (selectedCar == 0 && porsche) {
+            porsche->SetColor(glm::vec3(0.5f, 0.0f, 1.0f));  // Purple
+            porscheColor = glm::vec3(0.5f, 0.0f, 1.0f);
+        }
+        else if (selectedCar == 1 && koenigsegg) {
+            koenigsegg->SetColor(glm::vec3(0.5f, 0.0f, 1.0f));
+            koenigseggColor = glm::vec3(0.5f, 0.0f, 1.0f);
+        }
+        std::cout << "Set car color to PURPLE" << std::endl;
+    }
+    if (glfwGetKey(window, GLFW_KEY_P) == GLFW_RELEASE) pPressed2 = false;
+
+    // Reset to original colors
+    if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS && !resetPressed) {
+        resetPressed = true;
+        if (selectedCar == 0 && porsche) {
+            porsche->ResetColor();
+        }
+        else if (selectedCar == 1 && koenigsegg) {
+            koenigsegg->ResetColor();
+        }
+        std::cout << "Reset car to original colors" << std::endl;
+    }
+    if (glfwGetKey(window, GLFW_KEY_X) == GLFW_RELEASE) resetPressed = false;
+
     if (glfwGetKey(window, GLFW_KEY_0) == GLFW_RELEASE) {
         static bool zeroReleased = false;
         if (!zeroReleased) {
