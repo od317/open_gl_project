@@ -18,12 +18,23 @@ public:
     glm::vec3 GetPosition() const { return position; }
     glm::mat4 GetModelMatrix() const;
 
+    // ADD THESE METHODS FOR COLOR CONTROL
+    void SetColor(glm::vec3 color);
+    void ResetColor();
+    void EnableColorOverride(bool enable);
+    glm::vec3 GetColor() const { return colorOverride; }
+    bool IsColorOverrideEnabled() const { return useColorOverride; }
+
 private:
     Model* model;  // Use pointer since Model is incomplete type here
     glm::vec3 position;
     glm::vec3 rotationAxis;
     float rotationAngle;
     glm::vec3 scale;
+
+    // ADD THESE FOR COLOR CONTROL
+    glm::vec3 colorOverride;
+    bool useColorOverride;
 };
 
 // Simple car class for testing
@@ -35,8 +46,12 @@ public:
     void setup();
     void cleanup();
 
+    // ADD FOR SIMPLE CAR
+    void SetColor(glm::vec3 color);
+
 private:
     glm::vec3 position;
+    glm::vec3 color;  // ADD THIS
     unsigned int VAO, VBO, EBO;
 
     void createCarMesh();

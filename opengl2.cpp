@@ -28,6 +28,19 @@ float yaw = -90.0f, pitch = 0.0f;
 float lastX = 400.0f, lastY = 300.0f;
 float fov = 60.0f;
 
+
+Car* trafficCar = nullptr;
+bool trafficCarLoaded = false;
+float trafficCarSpeed = 15.0f;  // Speed for traffic car
+float trafficCarPosition = -100.0f;  // Start position (at beginning of street)
+bool trafficMoving = true;  // Control whether traffic moves
+
+
+Car* trafficCar2 = nullptr;  // Second traffic car
+bool trafficCar2Loaded = false;
+float trafficCar2Position = 100.0f;  // Start at the opposite end
+float trafficCar2Speed = 12.0f;  // Slightly different speed for realism
+
 Floor* showroomFloor = nullptr;
 // Car selection
 int selectedCar = 0;  // 0 = Porsche, 1 = Koenigsegg
@@ -61,6 +74,10 @@ bool glassVisible = true;
 bool lightMoving = true;
 
 
+glm::vec3 porscheColor = glm::vec3(1.0f, 0.0f, 0.0f);  // Red
+glm::vec3 koenigseggColor = glm::vec3(0.0f, 0.0f, 1.0f);  // Blue
+glm::vec3 trafficCarColor = glm::vec3(0.0f, 1.0f, 0.0f);  // Green
+glm::vec3 trafficCar2Color = glm::vec3(1.0f, 1.0f, 0.0f);  // Yellow
 
 // Car variables - TWO CARS!
 Car* porsche = nullptr;
@@ -324,7 +341,23 @@ int main() {
         "C:/Users/HP/Downloads/Porsche_911_GT2.obj"
     };
 
+    std::vector<std::string> trafficCarPaths = {
+    "models/Porsche_911_GT2/Porsche_911_GT2.obj",
+    "../models/Porsche_911_GT2/Porsche_911_GT2.obj",
+    "C:/projects/university/opengl/opengl2/models/Porsche_911_GT2/Porsche_911_GT2.obj",
+    "C:/Users/HP/Downloads/Porsche_911_GT2.obj"
+    };
+
+    std::vector<std::string> trafficCar2Paths = {
+    "models/uploads_files_2792345_Koenigsegg.obj",
+    "../models/uploads_files_2792345_Koenigsegg.obj",
+    "C:/projects/university/opengl/opengl2/models/uploads_files_2792345_Koenigsegg.obj",
+    "C:/Users/HP/Downloads/82-koenigsegg-agera/uploads_files_2792345_Koenigsegg.obj"
+    };
+
     porsche = loadCarModel("Porsche 911 GT2", porschePaths, glm::vec3(-4.0f, 1.0f, 0.0f), 0.8f);
+    trafficCar2 = loadCarModel("Traffic Car 2 (Koenigsegg)", trafficCar2Paths, glm::vec3(0.0f, 0.3f, 0.0f), 0.15f);
+    trafficCar2Loaded = (trafficCar2 != nullptr);
     porscheLoaded = (porsche != nullptr);
 
     if (porscheLoaded) {
@@ -347,6 +380,55 @@ int main() {
         koenigsegg->SetRotation(180.0f);  // Face forward
         koenigsegg->SetPosition(glm::vec3(10.0f, 0.3f, 0.0f));  // Right exhibition platform
     }
+
+    trafficCar = loadCarModel("Traffic Car", trafficCarPaths, glm::vec3(0.0f, 0.3f, 0.0f), 1.5f);
+    trafficCarLoaded = (trafficCar != nullptr);
+
+    if (trafficCarLoaded) {
+        // Street is rotated 90°, so it runs along X-axis
+        // Street center is at X=8.0f, length is 200 units
+        // Car should face 270° (or -90°) to move from left to right
+        trafficCar->SetRotation(270.0f);  // Changed from 90.0f to 270.0f
+
+        // Position at the beginning of the street (left side)
+        // Street runs from X = 8.0f - 100.0f to X = 8.0f + 100.0f
+        trafficCarPosition = -100.0f;  // Start at left end
+
+        // INCREASE Y POSITION SIGNIFICANTLY - try 0.5f instead of 0.15f
+        // Also put it in a lane (not center of street)
+        glm::vec3 trafficStartPos = glm::vec3(8.0f + trafficCarPosition, 0.5f, 45.0f + 8.0f);
+        // Y = 0.5f (higher), Z = 45.0f + 8.0f (right lane)
+
+        trafficCar->SetPosition(trafficStartPos);
+
+        std::cout << "Traffic car loaded and positioned at street start" << std::endl;
+        std::cout << "Position: (" << trafficStartPos.x << ", " << trafficStartPos.y << ", " << trafficStartPos.z << ")" << std::endl;
+        std::cout << "Rotation: 270° (facing left to right along street)" << std::endl;
+        std::cout << "Street center: X=8.0, Y=0.0, Z=45.0" << std::endl;
+    }
+
+    if (trafficCar2Loaded) {
+        // This car will move from right to left (opposite direction)
+        // But if it's moving backward, we need to fix the rotation
+
+        // Let's try facing 270° to move from left to right (same as trafficCar)
+        trafficCar2->SetRotation(270.0f);  // CHANGED from 90.0f to 270.0f
+
+        // Position at the right end of the street
+        // Street runs from X = 8.0f - 100.0f to X = 8.0f + 100.0f
+        trafficCar2Position = 100.0f;  // Start at right end
+
+        // Place on left lane (opposite side from first car) with correct Y position
+        glm::vec3 trafficStartPos2 = glm::vec3(8.0f + trafficCar2Position, 0.5f, 45.0f - 8.0f);
+        // Y = 0.5f (same as trafficCar), Z = 45.0f - 8.0f (left lane)
+
+        trafficCar2->SetPosition(trafficStartPos2);
+
+        std::cout << "Second traffic car (Koenigsegg) loaded" << std::endl;
+        std::cout << "Position: (" << trafficStartPos2.x << ", " << trafficStartPos2.y << ", " << trafficStartPos2.z << ")" << std::endl;
+        std::cout << "Rotation: 270° (facing left to right along street)" << std::endl;
+    }
+
 
     std::cout << "\n=== Car Loading Complete ===" << std::endl;
     std::cout << "Porsche loaded: " << (porscheLoaded ? "YES" : "NO") << std::endl;
@@ -488,6 +570,48 @@ int main() {
             );
             lightSource.setPosition(newLightPos);
 
+            // Update traffic car position (automatic movement)
+               // Update traffic car position (automatic movement) - MOVE THIS OUTSIDE THE LIGHT ANIMATION!
+            if (trafficCarLoaded && trafficMoving) {
+                // Street is rotated 90°, so it runs along X-axis
+                // Move from X = 8.0f - 100.0f to X = 8.0f + 100.0f
+
+                trafficCarPosition += trafficCarSpeed * deltaTime;
+
+                // Reset to beginning when reaching end
+                if (trafficCarPosition > 100.0f) {
+                    trafficCarPosition = -100.0f;
+                }
+
+                // Update traffic car position - move along X-axis
+                // Increased Y position to 1.0f for bigger car
+                glm::vec3 trafficPos = glm::vec3(8.0f + trafficCarPosition, 1.0f, 45.0f + 8.0f);
+                trafficCar->SetPosition(trafficPos);
+
+                // Car should face along the street direction
+                trafficCar->SetRotation(270.0f);
+            }
+
+            if (trafficCar2Loaded && trafficMoving) {
+                // This car moves from right to left (opposite direction)
+                // Since we're now facing 270°, we need to move in the opposite direction
+
+                // Move from right to left (negative X direction)
+                trafficCar2Position -= trafficCar2Speed * deltaTime;
+
+                // Reset to beginning when reaching end
+                if (trafficCar2Position < -100.0f) {
+                    trafficCar2Position = 100.0f;
+                }
+
+                // Update position - moves along X-axis in opposite direction
+                glm::vec3 trafficPos2 = glm::vec3(8.0f + trafficCar2Position, 0.5f, 45.0f - 8.0f);
+                trafficCar2->SetPosition(trafficPos2);
+
+                // Car faces 270° to move from left to right (same as trafficCar)
+                trafficCar2->SetRotation(270.0f);  // CHANGED from 90.0f to 270.0f
+            }
+
             // Update the animated light position in our lighting array
             if (animatedLightIndex >= 0 && animatedLightIndex < streetLightPositions.size()) {
                 streetLightPositions[animatedLightIndex] = newLightPos;
@@ -565,6 +689,13 @@ int main() {
         lightingShader.use();
         lightingShader.setMat4("projection", projection);
         lightingShader.setMat4("view", view);
+        if (trafficCarLoaded && trafficCar) {
+            trafficCar->Draw(lightingShader);
+        }
+
+        if (trafficCar2Loaded && trafficCar2) {
+            trafficCar2->Draw(lightingShader);
+        }
 
         // Draw Porsche (left side)
         if (porscheLoaded && porsche) {
