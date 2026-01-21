@@ -36,6 +36,24 @@
     <ClCompile Include="glass.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="model.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="car.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="test_model.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="skybox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="floor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="texture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shader.h">
@@ -51,6 +69,21 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="glass.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="model.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="car.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="skybox.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="floor.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="texture.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -70,5 +103,14 @@
     <None Include="glass_simple.frag">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="..\..\..\..\Program Files\Assimp\bin\x64\assimp-vc143-mt.dll">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="skybox.vert" />
+    <None Include="skybox.frag" />
+    <None Include="shader_with_texture.vert" />
+    <None Include="shader_with_texture.frag" />
+    <None Include="hall.vert" />
+    <None Include="hall.frag" />
   </ItemGroup>
 </Project>

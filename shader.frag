@@ -17,6 +17,8 @@ uniform float constant;
 uniform float linear;
 uniform float quadratic;
 
+
+
 void main()
 {
     // Ambient lighting

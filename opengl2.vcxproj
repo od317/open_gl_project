@@ -102,13 +102,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\HP\Downloads\glad\include;C:\Users\HP\Downloads\glm-1.0.3;C:\Users\HP\Downloads\stb-master\stb-master;C:\Users\HP\Downloads\glfw-3.4.bin.WIN64\glfw-3.4.bin.WIN64\include;C:\Users\HP\Downloads\glm-1.0.3\glm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files\Assimp\include;C:\Users\HP\Downloads\glad\include;C:\Users\HP\Downloads\glm-1.0.3;C:\Users\HP\Downloads\stb-master\stb-master;C:\Users\HP\Downloads\glfw-3.4.bin.WIN64\glfw-3.4.bin.WIN64\include;C:\Users\HP\Downloads\glm-1.0.3\glm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\HP\Downloads\glfw-3.4.bin.WIN64\glfw-3.4.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;user32.lib;gdi32.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Program Files\Assimp\lib;C:\Program Files\Assimp\lib\x64;C:\Users\HP\Downloads\glfw-3.4.bin.WIN64\glfw-3.4.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;user32.lib;gdi32.lib;shell32.lib;assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -119,37 +119,55 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\HP\Downloads\glad\include;C:\Users\HP\Downloads\glm-1.0.3;C:\Users\HP\Downloads\stb-master\stb-master;C:\Users\HP\Downloads\glfw-3.4.bin.WIN64\glfw-3.4.bin.WIN64\include;C:\Users\HP\Downloads\glm-1.0.3\glm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files\Assimp\include;C:\Users\HP\Downloads\glad\include;C:\Users\HP\Downloads\glm-1.0.3;C:\Users\HP\Downloads\stb-master\stb-master;C:\Users\HP\Downloads\glfw-3.4.bin.WIN64\glfw-3.4.bin.WIN64\include;C:\Users\HP\Downloads\glm-1.0.3\glm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\HP\Downloads\glfw-3.4.bin.WIN64\glfw-3.4.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;user32.lib;gdi32.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Program Files\Assimp\lib;C:\Program Files\Assimp\lib\x64;C:\Users\HP\Downloads\glfw-3.4.bin.WIN64\glfw-3.4.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;user32.lib;gdi32.lib;shell32.lib;assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\..\Users\HP\Downloads\glad\src\glad.c" />
+    <ClCompile Include="car.cpp" />
+    <ClCompile Include="floor.cpp" />
     <ClCompile Include="glass.cpp" />
     <ClCompile Include="lighting.cpp" />
     <ClCompile Include="light_source.cpp" />
+    <ClCompile Include="model.cpp" />
     <ClCompile Include="opengl2.cpp" />
     <ClCompile Include="room.cpp" />
     <ClCompile Include="shader.cpp" />
+    <ClCompile Include="skybox.cpp" />
+    <ClCompile Include="test_model.cpp" />
+    <ClCompile Include="texture.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="car.h" />
+    <ClInclude Include="floor.h" />
     <ClInclude Include="glass.h" />
     <ClInclude Include="lighting.h" />
     <ClInclude Include="light_source.h" />
+    <ClInclude Include="model.h" />
     <ClInclude Include="room.h" />
     <ClInclude Include="shader.h" />
+    <ClInclude Include="skybox.h" />
+    <ClInclude Include="texture.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\..\..\Program Files\Assimp\bin\x64\assimp-vc143-mt.dll" />
     <None Include="glass.frag" />
     <None Include="glass.vert" />
     <None Include="glass_simple.frag" />
+    <None Include="hall.frag" />
+    <None Include="hall.vert" />
     <None Include="shader.frag" />
     <None Include="shader.vert" />
+    <None Include="shader_with_texture.frag" />
+    <None Include="shader_with_texture.vert" />
+    <None Include="skybox.frag" />
+    <None Include="skybox.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
