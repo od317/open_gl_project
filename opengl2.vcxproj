@@ -131,6 +131,8 @@
   <ItemGroup>
     <ClCompile Include="..\..\..\..\Users\HP\Downloads\glad\src\glad.c" />
     <ClCompile Include="car.cpp" />
+    <ClCompile Include="door.cpp" />
+    <ClCompile Include="tree.cpp" />
     <ClCompile Include="floor.cpp" />
     <ClCompile Include="glass.cpp" />
     <ClCompile Include="lighting.cpp" />
@@ -146,6 +148,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="car.h" />
+    <ClInclude Include="door.h" />
+    <ClInclude Include="model_object.h" />
+    <ClInclude Include="tree.h" />
     <ClInclude Include="floor.h" />
     <ClInclude Include="glass.h" />
     <ClInclude Include="lighting.h" />

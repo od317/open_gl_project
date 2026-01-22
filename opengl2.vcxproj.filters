@@ -57,6 +57,12 @@
     <ClCompile Include="street.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="tree.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="door.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shader.h">
@@ -90,6 +96,15 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="street.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tree.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="model_object.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="door.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

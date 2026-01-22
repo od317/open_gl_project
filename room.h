@@ -12,7 +12,7 @@ private:
     float roomHeight;
     float roomDepth;
 
-    // Modern showroom color scheme (all in light gray)
+    // Modern showroom color scheme
     glm::vec3 wallColor;           // Single color for all walls
     glm::vec3 floorColor;
     glm::vec3 ceilingColor;
@@ -20,9 +20,21 @@ private:
 
     // Exhibition features
     bool hasMainWindow = false;
+    bool hasSideWindows = false;
+    bool hasFrontWindows = false;
     glm::vec3 windowPos;
     glm::vec3 windowSize;
     glm::vec3 windowWallNormal;
+
+    // Window properties for sides and front
+    float windowSpacing = 5.0f;
+    float windowHeight = 4.0f;
+    float windowWidth = 3.0f;
+
+    // Door properties
+    bool hasDoors = true;
+    float doorAngle = 0.0f;        // For animation
+    bool doorsOpen = false;
 
     // Exhibition details
     bool hasColumns = true;
@@ -43,9 +55,17 @@ private:
     void addTriangle(const glm::vec3& p1, const glm::vec3& p2, const glm::vec3& p3,
         const glm::vec3& color, const glm::vec3& normal);
     void createMainWallWithLargeWindow();
+    void createSideWindows();
+    void createFrontWindows();
     void createColumns();
     void createDisplayPlatforms();
     void createEntranceArch();
+    void createDoorFrames();  // New method
+    void createDoors();       // New method
+
+    // Helper for creating windows in walls
+    void addWindowToWall(float wallZ, bool isFrontWall = false);
+    void createWallWithWindows(float wallZ, const glm::vec3& normal, bool isFrontWall = false);
 
 public:
     // Constructor for large exhibition hall
@@ -69,8 +89,24 @@ public:
     void setFloorColor(const glm::vec3& color) { floorColor = color; needsUpdate = true; }
     void setCeilingColor(const glm::vec3& color) { ceilingColor = color; needsUpdate = true; }
 
+    // Window settings
+    void enableSideWindows(bool enable) { hasSideWindows = enable; needsUpdate = true; }
+    void enableFrontWindows(bool enable) { hasFrontWindows = enable; needsUpdate = true; }
+    void setWindowSpacing(float spacing) { windowSpacing = spacing; needsUpdate = true; }
+    void setWindowSize(float width, float height) { 
+        windowWidth = width; 
+        windowHeight = height; 
+        needsUpdate = true; 
+    }
+
     // Exhibition features
     void addMainWindow(const glm::vec3& position, const glm::vec3& size);
+
+    // Door controls
+    void toggleDoors();
+    void updateDoors(float deltaTime);
+    void setDoorsOpen(bool open);
+    bool areDoorsOpen() const { return doorsOpen; }
 };
 
 #endif

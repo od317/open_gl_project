@@ -16,7 +16,8 @@
 #include "car.h"
 #include "floor.h"
 #include "street.h"
-
+#include "door.h"
+#include "tree.h"
 // Camera and input variables
 glm::vec3 cameraPos = glm::vec3(0.0f, 8.0f, 20.0f);  // Start further back
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
@@ -41,6 +42,10 @@ bool trafficCar2Loaded = false;
 float trafficCar2Position = 100.0f;  // Start at the opposite end
 float trafficCar2Speed = 12.0f;  // Slightly different speed for realism
 
+Door* leftDoor = nullptr;
+Door* rightDoor = nullptr;
+bool doorsLoaded = false;
+
 Floor* showroomFloor = nullptr;
 // Car selection
 int selectedCar = 0;  // 0 = Porsche, 1 = Koenigsegg
@@ -58,8 +63,10 @@ bool cameraInCar = false;
 // Camera offsets for driver's seat (adjust these values as needed)
 glm::vec3 porscheDriverOffset = glm::vec3(-0.2f, 0.9f, -0.6f);
 glm::vec3 koenigseggDriverOffset = glm::vec3(-0.15f, 0.8f, -0.5f);
-glm::vec3 porscheDriverSeatPos = glm::vec3(-3.67038f, 0.624424f, -0.329982f);  // Adjust these!
-glm::vec3 koenigseggDriverSeatPos = glm::vec3(4.0f, 1.3f, 0.0f);  // Adjust these!
+glm::vec3 porscheDriverSeatPos = glm::vec3(-4.07038f, 1.3f, 3.329982f);  // Adjust these!
+glm::vec3 koenigseggDriverSeatPos = glm::vec3(4.2f, 0.9f, 0.0f);  // Adjust these!
+
+float treeScale = 0.1f;
 
 // Store original camera position when entering driver seat
 glm::vec3 savedCameraPos;
@@ -72,6 +79,7 @@ float lightAngle = 0.0f;
 bool showControls = true;
 bool glassVisible = true;
 bool lightMoving = true;
+
 
 
 glm::vec3 porscheColor = glm::vec3(1.0f, 0.0f, 0.0f);  // Red
@@ -91,6 +99,12 @@ bool streetCreated = false;
 std::vector<StreetLight*> streetLights;
 std::vector<glm::vec3> streetLightPositions;
 std::vector<glm::vec3> streetLightColors;
+std::vector<GlassWindow> sideWindows;
+std::vector<GlassWindow> frontWindows;
+
+
+std::vector<Tree*> trees;
+std::vector<glm::vec3> treePositions;
 // Function prototypes
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -100,6 +114,9 @@ void printTransparencyControls();
 void printCarInfo();
 void toggleDriverSeatView(int carIndex);
 void updateDriverSeatCamera();
+Tree* loadTreeModel(const glm::vec3& position, float scale,
+    const std::vector<std::string>& paths,
+    const glm::vec3& color = glm::vec3(0.0f, 0.5f, 0.0f));
 void updateMultipleLights(Shader& shader, const std::vector<glm::vec3>& positions,
     const std::vector<glm::vec3>& colors, const glm::vec3& viewPos);
 
@@ -214,6 +231,7 @@ void toggleDriverSeatView(int carIndex) {
             float carRotation = koenigsegg->GetRotationAngle();
 
             glm::vec3 relativeOffset = koenigseggDriverSeatPos - glm::vec3(4.0f, 0.3f, 0.0f);
+
 
             glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(carRotation), glm::vec3(0.0f, 1.0f, 0.0f));
             glm::vec4 rotatedOffset = rotationMatrix * glm::vec4(relativeOffset, 1.0f);
@@ -373,6 +391,24 @@ int main() {
         "C:/Users/HP/Downloads/82-koenigsegg-agera/uploads_files_2792345_Koenigsegg.obj"
     };
 
+    std::vector<std::string> treePaths = {
+    "models/Tree.obj",  // Your tree model
+    "Tree.obj",
+    "../models/Tree.obj",
+    "C:/projects/university/opengl/opengl2/models/Tree.obj"
+    };
+
+
+    std::cout << "Checking tree model paths:" << std::endl;
+    for (const auto& path : treePaths) {
+        if (fileExists(path)) {
+            std::cout << "Found: " << path << std::endl;
+        }
+        else {
+            std::cout << "Missing: " << path << std::endl;
+        }
+    }
+
     koenigsegg = loadCarModel("Koenigsegg", koenigseggPaths, glm::vec3(4.0f, 0.3f, 0.0f), 0.08f);
     koenigseggLoaded = (koenigsegg != nullptr);
 
@@ -451,10 +487,19 @@ int main() {
 
     // Create HUGE exhibition hall for car showcase
     Room room(40.0f, 15.0f, 30.0f);  // Width: 40m, Height: 15m, Depth: 30m - EXHIBITION SIZE!
-    room.setWallColor(glm::vec3(1.0f, 1.0f, 1.0f));      // WHITE walls for brightness
+    room.setWallColor(glm::vec3(1.0f, 1.0f, 1.0f));      // PURE WHITE walls
     room.setFloorColor(glm::vec3(0.95f, 0.95f, 0.95f));  // Very light gray floor
     room.setCeilingColor(glm::vec3(1.0f, 1.0f, 1.0f));   // WHITE ceiling
     room.setup();
+
+    leftDoor = new Door(glm::vec3(-2.5f, 3.5f, room.getDepth() / 2.0f - 0.01f),
+        glm::vec3(4.0f, 7.0f, 0.1f), true);
+    rightDoor = new Door(glm::vec3(2.5f, 3.5f, room.getDepth() / 2.0f - 0.01f),
+        glm::vec3(4.0f, 7.0f, 0.1f), false);
+
+    leftDoor->setup();
+    rightDoor->setup();
+    doorsLoaded = true;
 
     // Create glass window for the exhibition (much larger)
     glm::vec3 windowPos = room.getWindowPosition();
@@ -462,6 +507,61 @@ int main() {
     GlassWindow glassWindow(windowPos, glm::vec3(25.0f, 8.0f, 0.02f));  // Large exhibition window
     glassWindow.setAsTintedGlass();
     glassWindow.setup();
+
+        float halfDepth = room.getDepth() / 2.0f;  // Changed from roomDepth to room.getDepth()
+
+        float roomHalfDepth = room.getDepth() / 2.0f;  // Use different name to avoid conflict
+        float roomHalfWidth = room.getWidth() / 2.0f;  // Get half width
+
+        float windowSpacing = 5.0f;
+        float windowHeight = 4.0f;
+        float windowWidth = 3.0f;
+
+        // Clear any existing windows
+        sideWindows.clear();
+        frontWindows.clear();
+
+        // Left side windows
+        for (int i = 0; i < 3; i++) {
+            float windowCenterZ = -roomHalfDepth + 2.5f + i * windowSpacing;
+            glm::vec3 windowPos(-roomHalfWidth + 0.02f, 4.0f, windowCenterZ); // Slightly in front of wall
+            GlassWindow sideWindow(windowPos, glm::vec3(windowWidth, windowHeight, 0.02f));
+            sideWindow.setAsTintedGlass();
+            sideWindow.setup();
+            sideWindows.push_back(sideWindow);
+        }
+
+        // Right side windows
+        for (int i = 0; i < 3; i++) {
+            float windowCenterZ = -roomHalfDepth + 2.5f + i * windowSpacing;
+            glm::vec3 windowPos(roomHalfWidth - 0.02f, 4.0f, windowCenterZ); // Slightly in front of wall
+            GlassWindow sideWindow(windowPos, glm::vec3(windowWidth, windowHeight, 0.02f));
+            sideWindow.setAsTintedGlass();
+            sideWindow.setup();
+            sideWindows.push_back(sideWindow);
+        }
+
+
+        for (int i = 0; i < 2; i++) {
+            float windowCenterX = -12.0f + i * 8.0f;  // Adjusted spacing
+            glm::vec3 windowPos(windowCenterX, 4.0f, roomHalfDepth + 0.02f); // Slightly in front of wall
+            GlassWindow frontWindow(windowPos, glm::vec3(3.0f, 4.0f, 0.02f));
+            frontWindow.setAsTintedGlass();
+            frontWindow.setup();
+            frontWindows.push_back(frontWindow);
+        }
+
+        // Windows on right side of entrance
+        for (int i = 0; i < 2; i++) {
+            float windowCenterX = 12.0f - i * 8.0f;  // Mirror of left side
+            glm::vec3 windowPos(windowCenterX, 4.0f, roomHalfDepth + 0.02f); // Slightly in front of wall
+            GlassWindow frontWindow(windowPos, glm::vec3(3.0f, 4.0f, 0.02f));
+            frontWindow.setAsTintedGlass();
+            frontWindow.setup();
+            frontWindows.push_back(frontWindow);
+        }
+
+
 
     // Create main light - positioned high for exhibition hall
     LightSource lightSource(glm::vec3(0.0f, 12.0f, 0.0f), glm::vec3(1.2f, 1.2f, 1.0f));  // Bright warm light
@@ -498,6 +598,50 @@ int main() {
         streetLightColors.push_back(glm::vec3(1.0f, 1.0f, 0.8f));  // Warm light
         streetLightColors.push_back(glm::vec3(1.0f, 1.0f, 0.8f));  // Warm light
     }
+
+    for (int i = -8; i <= 8; i++) {
+        float xPos = static_cast<float>(i) * 5.0f + 8.0f;
+
+        // Alternate trees on left and right sides
+        for (int side = -1; side <= 1; side += 2) {
+            if ((i + side) % 3 == 0) {  // Create trees every 3 positions
+                float zOffset = 45.0f + (22.0f * side);  // Same position as street lights
+
+                // Add some randomness to tree positions
+                float randomX = (rand() % 100) / 100.0f - 0.5f;
+                float randomZ = (rand() % 100) / 100.0f - 0.5f;
+
+                glm::vec3 treePos = glm::vec3(xPos + randomX, 0.0f, zOffset + randomZ);
+
+                // Random tree color variations (different shades of green)
+                glm::vec3 treeColor;
+                int colorChoice = rand() % 3;
+                switch (colorChoice) {
+                case 0: treeColor = glm::vec3(0.0f, 0.5f, 0.0f); break;  // Standard green
+                case 1: treeColor = glm::vec3(0.1f, 0.6f, 0.1f); break;  // Bright green
+                case 2: treeColor = glm::vec3(0.0f, 0.4f, 0.1f); break;  // Dark green
+                }
+
+                // Random scale between 0.3 and 0.8
+                float treeScale = 0.3f + (rand() % 50) / 100.0f;
+
+                // Load tree model
+                Tree* tree = loadTreeModel(treePos, treeScale, treePaths);
+
+
+
+
+                if (tree) {
+                    trees.push_back(tree);
+                    treePositions.push_back(treePos);
+                }
+            }
+        }
+    }
+
+
+
+    std::cout << "Created " << trees.size() << " trees along the street" << std::endl;
 
     // Add the main hall light to lighting calculations
     streetLightPositions.push_back(lightSource.getPosition());
@@ -570,6 +714,8 @@ int main() {
             );
             lightSource.setPosition(newLightPos);
 
+            room.updateDoors(deltaTime);
+
             // Update traffic car position (automatic movement)
                // Update traffic car position (automatic movement) - MOVE THIS OUTSIDE THE LIGHT ANIMATION!
             if (trafficCarLoaded && trafficMoving) {
@@ -630,6 +776,8 @@ int main() {
         skybox.draw(skyboxShader.ID, view, projection);
         glDepthMask(GL_TRUE); // Re-enable depth writing
 
+
+
         // 1. Draw the street and outdoor environment FIRST (farthest objects)
         lightingShader.use();
         lightingShader.setMat4("projection", projection);
@@ -660,6 +808,15 @@ int main() {
             lightingShader.setMat4("model", lightModel);
             streetLights[i]->draw();
         }
+
+        // Draw trees
+        for (size_t i = 0; i < trees.size(); i++) {
+            trees[i]->draw(lightingShader);
+        }
+
+        lightingShader.use();
+        lightingShader.setBool("useColorOverride", false);  // Reset this!
+        lightingShader.setFloat("shininess", 32.0f);  // Reset any other uniforms
 
         // 2. Draw the exhibition hall
         lightingShader.setMat4("model", glm::mat4(1.0f));
@@ -741,19 +898,82 @@ int main() {
             glassShader.setMat4("projection", projection);
             glassShader.setMat4("view", view);
 
-            model = glm::mat4(1.0f);
+            // Draw main back window
+            glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, glassWindow.getPosition());
             glassShader.setMat4("model", model);
-
-            glassWindow.updateShader(glassShader.ID,
-                lightSource.getPosition(),
-                cameraPos,
-                lightSource.getColor(),
-                0.3f);
+            glassWindow.updateShader(glassShader.ID, lightSource.getPosition(),
+                cameraPos, lightSource.getColor(), 0.3f);
 
             glDepthMask(GL_FALSE);
             glassWindow.draw(glassShader.ID);
+
+
+            // Draw front windows (on left and right sides of entrance)
+            float roomHalfDepth = room.getDepth() / 2.0f;
+            float roomHalfWidth = room.getWidth() / 2.0f;
+
+            // Left side front window
+            for (int i = 0; i < 2; i++) {
+                float windowCenterX = -12.0f + i * 8.0f;
+                glm::vec3 windowPos(windowCenterX, 4.0f, roomHalfDepth + 0.02f);
+
+                // Create glass window for this position
+                GlassWindow frontWindow(windowPos, glm::vec3(3.0f, 4.0f, 0.02f));
+                frontWindow.setAsTintedGlass();
+                frontWindow.setup();
+
+                // Set up transformation
+                glm::mat4 frontModel = glm::mat4(1.0f);
+                frontModel = glm::translate(frontModel, windowPos);
+                glassShader.setMat4("model", frontModel);
+
+                // Update shader with lighting
+                frontWindow.updateShader(glassShader.ID, lightSource.getPosition(),
+                    cameraPos, lightSource.getColor(), 0.3f);
+
+                // Draw the window
+                frontWindow.draw(glassShader.ID);
+            }
+
+            // Right side front window
+            for (int i = 0; i < 2; i++) {
+                float windowCenterX = 12.0f - i * 8.0f;
+                glm::vec3 windowPos(windowCenterX, 4.0f, roomHalfDepth + 0.02f);
+
+                // Create glass window for this position
+                GlassWindow frontWindow(windowPos, glm::vec3(3.0f, 4.0f, 0.02f));
+                frontWindow.setAsTintedGlass();
+                frontWindow.setup();
+
+                // Set up transformation
+                glm::mat4 frontModel = glm::mat4(1.0f);
+                frontModel = glm::translate(frontModel, windowPos);
+                glassShader.setMat4("model", frontModel);
+
+                // Update shader with lighting
+                frontWindow.updateShader(glassShader.ID, lightSource.getPosition(),
+                    cameraPos, lightSource.getColor(), 0.3f);
+
+                // Draw the window
+                frontWindow.draw(glassShader.ID);
+            }
+
             glDepthMask(GL_TRUE);
+        }
+
+        if (doorsLoaded) {
+            lightingShader.use();
+            lightingShader.setMat4("projection", projection);
+            lightingShader.setMat4("view", view);
+
+            // Update door animations
+            leftDoor->update(deltaTime);
+            rightDoor->update(deltaTime);
+
+            // Draw doors
+            leftDoor->draw(lightingShader);
+            rightDoor->draw(lightingShader);
         }
 
         glfwSwapBuffers(window);
@@ -765,6 +985,13 @@ int main() {
     room.cleanup();
     lightSource.cleanup();
     glassWindow.cleanup();
+    // Cleanup
+    if (leftDoor) delete leftDoor;
+    if (rightDoor) delete rightDoor;
+    for (size_t i = 0; i < trees.size(); i++) {
+        delete trees[i];
+    }
+    trees.clear();
     if (mainStreet) {
         mainStreet->cleanup();
         delete mainStreet;
@@ -831,6 +1058,16 @@ void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindo
     }
     if (glfwGetKey(window, GLFW_KEY_M) == GLFW_RELEASE) {
         mPressed = false;
+    }
+
+    static bool dPressed = false;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS && !dPressed) {
+        dPressed = true;
+        room.toggleDoors();
+        std::cout << "Toggled doors" << std::endl;
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_RELEASE) {
+        dPressed = false;
     }
 
     // Helper to find driver seat position (F key)
@@ -992,27 +1229,16 @@ void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindo
         glm::vec3 carPos = currentCar->GetPosition();
 
         if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-            carPos.z -= carSpeed;
-        if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
             carPos.z += carSpeed;
+        if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+            carPos.z -= carSpeed;
         if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
             carPos.x -= carSpeed;
         if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
             carPos.x += carSpeed;
 
         currentCar->SetPosition(carPos);
-
-        // Add car rotation based on movement (optional enhancement)
-        if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-            float rotation = currentCar->GetRotationAngle();
-            rotation += 50.0f * deltaTime;  // Turn left
-            currentCar->SetRotation(rotation);
-        }
-        if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-            float rotation = currentCar->GetRotationAngle();
-            rotation -= 50.0f * deltaTime;  // Turn right
-            currentCar->SetRotation(rotation);
-        }
+     
     }
 
     // TRANSPARENCY CONTROLS - COMPLETE VERSION
@@ -1083,8 +1309,8 @@ void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindo
             porscheColor = glm::vec3(1.0f, 0.0f, 0.0f);
         }
         else if (selectedCar == 1 && koenigsegg) {
-            koenigsegg->SetColor(glm::vec3(1.0f, 0.0f, 0.0f));
-            koenigseggColor = glm::vec3(1.0f, 0.0f, 0.0f);
+            //koenigsegg->SetColor(glm::vec3(1.0f, 0.0f, 0.0f));
+            //koenigseggColor = glm::vec3(1.0f, 0.0f, 0.0f);
         }
         std::cout << "Set car color to RED" << std::endl;
     }
@@ -1098,8 +1324,8 @@ void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindo
             porscheColor = glm::vec3(0.0f, 1.0f, 0.0f);
         }
         else if (selectedCar == 1 && koenigsegg) {
-            koenigsegg->SetColor(glm::vec3(0.0f, 1.0f, 0.0f));
-            koenigseggColor = glm::vec3(0.0f, 1.0f, 0.0f);
+            //koenigsegg->SetColor(glm::vec3(0.0f, 1.0f, 0.0f));
+            //koenigseggColor = glm::vec3(0.0f, 1.0f, 0.0f);
         }
         std::cout << "Set car color to GREEN" << std::endl;
     }
@@ -1113,8 +1339,8 @@ void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindo
             porscheColor = glm::vec3(0.0f, 0.0f, 1.0f);
         }
         else if (selectedCar == 1 && koenigsegg) {
-            koenigsegg->SetColor(glm::vec3(0.0f, 0.0f, 1.0f));
-            koenigseggColor = glm::vec3(0.0f, 0.0f, 1.0f);
+            //koenigsegg->SetColor(glm::vec3(0.0f, 0.0f, 1.0f));
+            //koenigseggColor = glm::vec3(0.0f, 0.0f, 1.0f);
         }
         std::cout << "Set car color to BLUE" << std::endl;
     }
@@ -1128,8 +1354,8 @@ void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindo
             porscheColor = glm::vec3(1.0f, 1.0f, 0.0f);
         }
         else if (selectedCar == 1 && koenigsegg) {
-            koenigsegg->SetColor(glm::vec3(1.0f, 1.0f, 0.0f));
-            koenigseggColor = glm::vec3(1.0f, 1.0f, 0.0f);
+            //koenigsegg->SetColor(glm::vec3(1.0f, 1.0f, 0.0f));
+            //koenigseggColor = glm::vec3(1.0f, 1.0f, 0.0f);
         }
         std::cout << "Set car color to YELLOW" << std::endl;
     }
@@ -1143,8 +1369,8 @@ void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindo
             porscheColor = glm::vec3(1.0f, 1.0f, 1.0f);
         }
         else if (selectedCar == 1 && koenigsegg) {
-            koenigsegg->SetColor(glm::vec3(1.0f, 1.0f, 1.0f));
-            koenigseggColor = glm::vec3(1.0f, 1.0f, 1.0f);
+            //koenigsegg->SetColor(glm::vec3(1.0f, 1.0f, 1.0f));
+            //koenigseggColor = glm::vec3(1.0f, 1.0f, 1.0f);
         }
         std::cout << "Set car color to WHITE" << std::endl;
     }
@@ -1158,8 +1384,8 @@ void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindo
             porscheColor = glm::vec3(1.0f, 0.5f, 0.0f);
         }
         else if (selectedCar == 1 && koenigsegg) {
-            koenigsegg->SetColor(glm::vec3(1.0f, 0.5f, 0.0f));
-            koenigseggColor = glm::vec3(1.0f, 0.5f, 0.0f);
+            //koenigsegg->SetColor(glm::vec3(1.0f, 0.5f, 0.0f));
+            //koenigseggColor = glm::vec3(1.0f, 0.5f, 0.0f);
         }
         std::cout << "Set car color to ORANGE" << std::endl;
     }
@@ -1173,8 +1399,8 @@ void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindo
             porscheColor = glm::vec3(0.5f, 0.0f, 1.0f);
         }
         else if (selectedCar == 1 && koenigsegg) {
-            koenigsegg->SetColor(glm::vec3(0.5f, 0.0f, 1.0f));
-            koenigseggColor = glm::vec3(0.5f, 0.0f, 1.0f);
+            //koenigsegg->SetColor(glm::vec3(0.5f, 0.0f, 1.0f));
+            //koenigseggColor = glm::vec3(0.5f, 0.0f, 1.0f);
         }
         std::cout << "Set car color to PURPLE" << std::endl;
     }
@@ -1187,7 +1413,7 @@ void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindo
             porsche->ResetColor();
         }
         else if (selectedCar == 1 && koenigsegg) {
-            koenigsegg->ResetColor();
+            //koenigsegg->ResetColor();
         }
         std::cout << "Reset car to original colors" << std::endl;
     }
@@ -1432,4 +1658,44 @@ void updateMultipleLights(Shader& shader, const std::vector<glm::vec3>& position
         shader.setFloat(lightStr + ".linear", 0.09f);
         shader.setFloat(lightStr + ".quadratic", 0.032f);
     }
+}
+
+
+Tree* loadTreeModel(const glm::vec3& position, float scale,
+    const std::vector<std::string>& paths,
+    const glm::vec3&color) {
+
+    std::cout << "\n=== Loading Tree ===" << std::endl;
+
+    for (const auto& path : paths) {
+        std::cout << "Trying to load tree from: " << path << std::endl;
+
+        if (fileExists(path)) {
+            std::cout << "File found! Attempting to load..." << std::endl;
+
+            try {
+                // Create tree with position, scale, and color
+                Tree* tree = new Tree(position, scale, color);
+
+                // Load the model
+                if (tree->loadModel(path)) {
+                    std::cout << "SUCCESS: Tree loaded from: " << path << std::endl;
+                    return tree;
+                }
+                else {
+                    std::cout << "Failed to load tree model" << std::endl;
+                    delete tree;
+                }
+            }
+            catch (const std::exception& e) {
+                std::cout << "Exception loading tree: " << e.what() << std::endl;
+            }
+        }
+        else {
+            std::cout << "File not found." << std::endl;
+        }
+    }
+
+    std::cout << "WARNING: Could not load tree model from any path" << std::endl;
+    return nullptr;
 }
