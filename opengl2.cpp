@@ -18,6 +18,64 @@
 #include "street.h"
 #include "door.h"
 #include "tree.h"
+#include <algorithm>
+#include <cmath>
+
+
+struct BoundingBox {
+    glm::vec3 min;
+    glm::vec3 max;
+    glm::vec3 center;
+    glm::vec3 size;
+
+    BoundingBox() : min(0.0f), max(0.0f), center(0.0f), size(0.0f) {}
+    BoundingBox(glm::vec3 min, glm::vec3 max) : min(min), max(max) {
+        center = (min + max) * 0.5f;
+        size = max - min;
+    }
+
+    void update(const glm::mat4& transform) {
+        // Transform all 8 corners of the box
+        glm::vec3 corners[8] = {
+            glm::vec3(min.x, min.y, min.z),
+            glm::vec3(max.x, min.y, min.z),
+            glm::vec3(min.x, max.y, min.z),
+            glm::vec3(max.x, max.y, min.z),
+            glm::vec3(min.x, min.y, max.z),
+            glm::vec3(max.x, min.y, max.z),
+            glm::vec3(min.x, max.y, max.z),
+            glm::vec3(max.x, max.y, max.z)
+        };
+
+        // Initialize transformed min/max
+        glm::vec3 transformedMin(FLT_MAX);
+        glm::vec3 transformedMax(-FLT_MAX);
+
+        // Transform each corner and find new bounds
+        for (int i = 0; i < 8; i++) {
+            glm::vec4 transformed = transform * glm::vec4(corners[i], 1.0f);
+            transformedMin = glm::min(transformedMin, glm::vec3(transformed));
+            transformedMax = glm::max(transformedMax, glm::vec3(transformed));
+        }
+
+        min = transformedMin;
+        max = transformedMax;
+        center = (min + max) * 0.5f;
+        size = max - min;
+    }
+
+    bool intersects(const BoundingBox& other) const {
+        return (min.x <= other.max.x && max.x >= other.min.x) &&
+            (min.y <= other.max.y && max.y >= other.min.y) &&
+            (min.z <= other.max.z && max.z >= other.min.z);
+    }
+
+    void draw() const {
+        // For debugging - draw wireframe box
+        // This is optional but useful for debugging collisions
+    }
+};
+
 // Camera and input variables
 glm::vec3 cameraPos = glm::vec3(0.0f, 8.0f, 20.0f);  // Start further back
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
@@ -54,7 +112,8 @@ int selectedCar = 0;  // 0 = Porsche, 1 = Koenigsegg
 enum CameraMode {
     FREE_CAMERA,
     PORSCHE_DRIVER_SEAT,
-    KOENIGSEGG_DRIVER_SEAT
+    KOENIGSEGG_DRIVER_SEAT,
+    MERCEDES_DRIVER_SEAT
 };
 
 CameraMode cameraMode = FREE_CAMERA;
@@ -65,6 +124,8 @@ glm::vec3 porscheDriverOffset = glm::vec3(-0.2f, 0.9f, -0.6f);
 glm::vec3 koenigseggDriverOffset = glm::vec3(-0.15f, 0.8f, -0.5f);
 glm::vec3 porscheDriverSeatPos = glm::vec3(-4.07038f, 1.3f, 3.329982f);  // Adjust these!
 glm::vec3 koenigseggDriverSeatPos = glm::vec3(4.2f, 0.9f, 0.0f);  // Adjust these!
+glm::vec3 mercedesDriverSeatPos = glm::vec3(1.4f, 1.3f, -2.1f);  // Adjust these!
+glm::vec3 mercedesDriverOffset = glm::vec3(-0.1f, 0.9f, -0.5f);
 
 float treeScale = 0.1f;
 
@@ -92,6 +153,10 @@ Car* porsche = nullptr;
 Car* koenigsegg = nullptr;
 bool porscheLoaded = false;
 bool koenigseggLoaded = false;
+
+Car* mercedes = nullptr;
+bool mercedesLoaded = false;
+glm::vec3 mercedesColor = glm::vec3(0.8f, 0.8f, 0.9f);
 
 Street* mainStreet = nullptr;
 float streetRotation = 90.0f;  // ADD THIS: Rotate street by 90 degrees
@@ -246,8 +311,29 @@ void toggleDriverSeatView(int carIndex) {
                 << cameraPos.y << ", " << cameraPos.z << ")" << std::endl;
             std::cout << "Camera will follow car movement!" << std::endl;
         }
+        else if (carIndex == 2 && mercedesLoaded) {  // ADD THIS BLOCK
+            cameraMode = MERCEDES_DRIVER_SEAT;
+
+            glm::vec3 carPos = mercedes->GetPosition();
+            float carRotation = mercedes->GetRotationAngle();
+
+            glm::vec3 relativeOffset = mercedesDriverSeatPos - glm::vec3(0.0f, 0.3f, 0.0f);  // Adjust reference position
+
+            glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(carRotation), glm::vec3(0.0f, 1.0f, 0.0f));
+            glm::vec4 rotatedOffset = rotationMatrix * glm::vec4(relativeOffset, 1.0f);
+
+            cameraPos = carPos + glm::vec3(rotatedOffset);
+            cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+            yaw = -90.0f;
+            pitch = 0.0f;
+
+            std::cout << "Entered Mercedes GLS 580 driver's seat view" << std::endl;
+            std::cout << "Position: (" << cameraPos.x << ", "
+                << cameraPos.y << ", " << cameraPos.z << ")" << std::endl;
+        }
         cameraInCar = true;
     }
+
     else {
         // Restore saved camera state
         cameraMode = FREE_CAMERA;
@@ -281,6 +367,17 @@ void updateDriverSeatCamera() {
 
         // Same logic for Koenigsegg
         glm::vec3 relativeOffset = koenigseggDriverSeatPos - glm::vec3(4.0f, 0.3f, 0.0f);
+
+        glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(carRotation), glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::vec4 rotatedOffset = rotationMatrix * glm::vec4(relativeOffset, 1.0f);
+
+        cameraPos = carPos + glm::vec3(rotatedOffset);
+    }
+    else if (cameraMode == MERCEDES_DRIVER_SEAT && mercedes) {  // ADD THIS
+        glm::vec3 carPos = mercedes->GetPosition();
+        float carRotation = mercedes->GetRotationAngle();
+
+        glm::vec3 relativeOffset = mercedesDriverSeatPos - glm::vec3(0.0f, 0.3f, 0.0f);
 
         glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(carRotation), glm::vec3(0.0f, 1.0f, 0.0f));
         glm::vec4 rotatedOffset = rotationMatrix * glm::vec4(relativeOffset, 1.0f);
@@ -398,6 +495,26 @@ int main() {
     "C:/projects/university/opengl/opengl2/models/Tree.obj"
     };
 
+
+    std::vector<std::string> mercedesPaths = {
+    "models/uploads_files_2787791_Mercedes+Benz+GLS+580.obj",
+    "../models/uploads_files_2787791_Mercedes+Benz+GLS+580.obj",
+    "C:/projects/university/opengl/opengl2/models/uploads_files_2787791_Mercedes+Benz+GLS+580.obj",
+    "C:/Users/HP/Downloads/uploads_files_2787791_Mercedes+Benz+GLS+580.obj"
+    };
+
+    mercedes = loadCarModel("Mercedes Benz GLS 580", mercedesPaths, glm::vec3(0.0f, 0.1f, 0.0f), 0.6f);
+
+    mercedesLoaded = (mercedes != nullptr);
+
+    if (mercedesLoaded) {
+        std::cout << "DEBUG: Setting Mercedes rotation to 180.0f" << std::endl;
+        mercedes->SetPosition(glm::vec3(0.0f, 0.3f, 0.0f));  // Move down to Y=0.3f
+
+        // Debug: Print the rotation after setting it
+        std::cout << "DEBUG: Mercedes rotation set to: " << mercedes->GetRotationAngle() << " degrees" << std::endl;
+        std::cout << "Mercedes GLS 580 loaded and positioned at center (lowered)" << std::endl;
+    }
 
     std::cout << "Checking tree model paths:" << std::endl;
     for (const auto& path : treePaths) {
@@ -842,6 +959,13 @@ int main() {
         lightingShader.setMat4("model", platform);
         glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 
+        // Platform for Mercedes (center)
+        platform = glm::mat4(1.0f);
+        platform = glm::translate(platform, glm::vec3(0.0f, 0.0f, 0.0f));  // Center position
+        platform = glm::scale(platform, glm::vec3(8.0f, 0.2f, 15.0f));
+        lightingShader.setMat4("model", platform);
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+
         // 4. Draw the cars
         lightingShader.use();
         lightingShader.setMat4("projection", projection);
@@ -852,6 +976,18 @@ int main() {
 
         if (trafficCar2Loaded && trafficCar2) {
             trafficCar2->Draw(lightingShader);
+        }
+
+        if (mercedesLoaded && mercedes) {
+            mercedes->Draw(lightingShader);
+        }
+        else {
+            // Placeholder for Mercedes
+            glm::mat4 placeholder = glm::mat4(1.0f);
+            placeholder = glm::translate(placeholder, glm::vec3(0.0f, 0.5f, 0.0f));
+            placeholder = glm::scale(placeholder, glm::vec3(1.8f, 1.0f, 3.5f));  // SUV is bigger
+            lightingShader.setMat4("model", placeholder);
+            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
         }
 
         // Draw Porsche (left side)
@@ -985,6 +1121,7 @@ int main() {
     room.cleanup();
     lightSource.cleanup();
     glassWindow.cleanup();
+    if (mercedes) delete mercedes;
     // Cleanup
     if (leftDoor) delete leftDoor;
     if (rightDoor) delete rightDoor;
@@ -1083,6 +1220,7 @@ void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindo
     // DRIVER SEAT TOGGLE CONTROLS (F1 and F2 keys)
     static bool f1Pressed = false;
     static bool f2Pressed = false;
+    static bool f4Pressed = false;
 
     if (glfwGetKey(window, GLFW_KEY_F1) == GLFW_PRESS && !f1Pressed) {
         f1Pressed = true;
@@ -1098,6 +1236,14 @@ void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindo
     }
     if (glfwGetKey(window, GLFW_KEY_F2) == GLFW_RELEASE) {
         f2Pressed = false;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_F4) == GLFW_PRESS && !f4Pressed) {
+        f4Pressed = true;
+        toggleDriverSeatView(2);
+    }
+    if (glfwGetKey(window, GLFW_KEY_F4) == GLFW_RELEASE) {
+        f4Pressed = false;
     }
 
     // Exit driver seat with E key
@@ -1182,7 +1328,7 @@ void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindo
     // CAR SELECTION (1 and 2 keys) - only works in free camera mode
     static bool onePressed = false;
     static bool twoPressed = false;
-
+    static bool threePressed = false;
     if (cameraMode == FREE_CAMERA) {
         if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS && !onePressed) {
             onePressed = true;
@@ -1201,11 +1347,37 @@ void processInput(GLFWwindow* window, Room& room, LightSource& light, GlassWindo
         if (glfwGetKey(window, GLFW_KEY_2) == GLFW_RELEASE) {
             twoPressed = false;
         }
+
+        if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS && !threePressed) {
+            threePressed = true;
+            selectedCar = 2;
+            std::cout << "Selected: Mercedes Benz GLS 580" << std::endl;
+        }
+        if (glfwGetKey(window, GLFW_KEY_3) == GLFW_RELEASE) {
+            threePressed = false;
+        }
+
     }
 
     // Get currently selected car
-    Car* currentCar = (selectedCar == 0) ? porsche : koenigsegg;
-    bool currentCarLoaded = (selectedCar == 0) ? porscheLoaded : koenigseggLoaded;
+    Car* currentCar = nullptr;
+    bool currentCarLoaded = false;
+
+    switch (selectedCar) {
+    case 0:
+        currentCar = porsche;
+        currentCarLoaded = porscheLoaded;
+        break;
+    case 1:
+        currentCar = koenigsegg;
+        currentCarLoaded = koenigseggLoaded;
+        break;
+    case 2:
+        currentCar = mercedes;
+        currentCarLoaded = mercedesLoaded;
+        break;
+    }
+
 
     // CAR CONTROLS (only for selected car, works in both modes)
     static bool cPressed = false;
